@@ -153,29 +153,26 @@ export default function App() {
     setAppState(newState);
     saveLocalState(newState);
 
-    // Background push to Supabase for the current user
-    const client = getSupabaseClient(newState);
-    if (client) {
-      pushStateToSupabase(newState, currentUser).catch(err => {
-        console.warn('Background Supabase sync failed:', err);
-      });
+    // ONLY push to cloud if a user is actively logged in (never leak guest data)
+    if (currentUser) {
+      const client = getSupabaseClient(newState);
+      if (client) {
+        pushStateToSupabase(newState, currentUser).catch(err => {
+          console.warn('Background Supabase sync failed:', err);
+        });
+      }
     }
   };
 
-  // Attempt initial pull on mount if Supabase is configured
+  // Attempt initial pull on mount ONLY if a user is logged in
   useEffect(() => {
+    if (!currentUser) return;
     const client = getSupabaseClient(appState);
     if (client) {
       pullStateFromSupabase(appState, currentUser).then(res => {
         if (res.ok && res.data) {
-          if (
-            res.data.expenses.length > appState.expenses.length ||
-            res.data.incomes.length > appState.incomes.length
-          ) {
-            setAppState(res.data);
-            saveLocalState(res.data);
-            showToast('تمت المزامنة السحابية بحسابك');
-          }
+          setAppState(res.data);
+          saveLocalState(res.data);
         }
       });
     }
@@ -194,7 +191,7 @@ export default function App() {
       showToast('تم استرجاع بياناتك السحابية بنجاح ✓');
     } else {
       // If user has local data, push it up to associate with their new account
-      if (appState.expenses.length > 0 || appState.incomes.length > 0) {
+      if (appState.expenses.length > 0 || appState.incomes.length > 0 || appState.obligations.length > 0) {
         pushStateToSupabase(appState, user);
       }
     }
@@ -203,10 +200,14 @@ export default function App() {
   const handleLogout = async () => {
     setCurrentUser(null);
     saveStoredAuthUser(null);
+    const fresh = defaultState();
+    setAppState(fresh);
+    saveLocalState(fresh);
     await supabaseAuthSignOut();
     if (currentRoute === 'admin') {
       navigateTo('home');
     }
+    showToast('تم تسجيل الخروج');
   };
 
   // FAB / action dispatch
