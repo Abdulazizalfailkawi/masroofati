@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { AuthUser } from '../../types.ts';
-import { ADMIN_EMAIL, ADMIN_PASSCODE, isUserAdmin } from '../../lib/auth.ts';
 import { supabaseAuthSignIn, supabaseAuthSignUp } from '../../lib/supabase.ts';
 
 interface AuthSheetProps {
@@ -23,43 +22,19 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [secretClickCount, setSecretClickCount] = useState(0);
-  const [secretModeActive, setSecretModeActive] = useState(false);
-  const [secretPass, setSecretPass] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   if (!isOpen) return null;
-
-  const handleTitleClick = () => {
-    const nextCount = secretClickCount + 1;
-    if (nextCount >= 3) {
-      setSecretModeActive(prev => !prev);
-      setSecretClickCount(0);
-    } else {
-      setSecretClickCount(nextCount);
-    }
-  };
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setInfo(null);
     const cleanEmail = email.trim();
     if (!cleanEmail || !password) {
       setErr('يرجى كتابة البريد الإلكتروني وكلمة المرور');
-      return;
-    }
-
-    // Direct secret admin check: if email matches admin email or password is the admin passcode
-    if (isUserAdmin(cleanEmail) || password === ADMIN_PASSCODE) {
-      const adminUser: AuthUser = {
-        id: 'admin_master',
-        email: cleanEmail.includes('@') ? cleanEmail : ADMIN_EMAIL,
-        isAdmin: true,
-      };
-      onLoginSuccess(adminUser);
-      onToast('تم تسجيل الدخول بنجاح');
-      onClose();
       return;
     }
 
@@ -79,6 +54,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    setInfo(null);
     const cleanEmail = email.trim();
     if (!cleanEmail || !password) {
       setErr('يرجى كتابة البريد الإلكتروني وكلمة المرور');
@@ -97,33 +73,12 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
       onLoginSuccess(res.user);
       onToast('تم إنشاء الحساب بنجاح!');
       onClose();
+    } else if (res.ok && res.needsConfirmation) {
+      setInfo(res.message);
+      setMode('signin');
+      setPassword('');
     } else {
-      // Fallback local registration
-      const newUser: AuthUser = {
-        id: `usr_${Date.now()}`,
-        email: cleanEmail,
-        isAdmin: isUserAdmin(cleanEmail),
-      };
-      onLoginSuccess(newUser);
-      onToast('تم إنشاء الحساب بنجاح');
-      onClose();
-    }
-  };
-
-  const handleSecretLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setErr(null);
-    if (secretPass.trim() === ADMIN_PASSCODE || secretPass.trim() === 'admin') {
-      const adminUser: AuthUser = {
-        id: 'admin_master',
-        email: ADMIN_EMAIL,
-        isAdmin: true,
-      };
-      onLoginSuccess(adminUser);
-      onToast('تم تسجيل الدخول بنجاح');
-      onClose();
-    } else {
-      setErr('الرمز غير صحيح');
+      setErr(res.message || 'تعذّر إنشاء الحساب');
     }
   };
 
@@ -138,12 +93,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
       >
         <div className="grab" />
         <div className="sheet-h">
-          <h2
-            onClick={handleTitleClick}
-            style={{ cursor: 'default', userSelect: 'none' }}
-          >
-            {currentUser ? 'الملف الشخصي' : 'تسجيل الدخول'}
-          </h2>
+          <h2>{currentUser ? 'الملف الشخصي' : 'تسجيل الدخول'}</h2>
           <button type="button" className="x" onClick={onClose} aria-label="إغلاق">
             ×
           </button>
@@ -229,6 +179,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
                   onClick={() => {
                     setMode('signin');
                     setErr(null);
+                    setInfo(null);
                   }}
                 >
                   تسجيل الدخول
@@ -247,6 +198,7 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
                   onClick={() => {
                     setMode('signup');
                     setErr(null);
+                    setInfo(null);
                   }}
                 >
                   حساب جديد
@@ -259,25 +211,13 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
                 </p>
               )}
 
-              {secretModeActive ? (
-                /* Hidden secret panel - only activated by triple clicking title */
-                <form onSubmit={handleSecretLogin} style={{ display: 'grid', gap: 14, marginTop: 8 }}>
-                  <label className="fld">
-                    <span>الرمز الخاص</span>
-                    <input
-                      type="password"
-                      placeholder="••••••••"
-                      value={secretPass}
-                      onChange={e => setSecretPass(e.target.value)}
-                      autoFocus
-                    />
-                  </label>
-                  <button className="btn primary block-btn" type="submit">
-                    تأكيد الدخول
-                  </button>
-                </form>
-              ) : (
-                <form
+              {info && (
+                <div className="alert good" role="status" style={{ marginTop: 10, padding: '10px 12px', fontSize: 14 }}>
+                  <span>{info}</span>
+                </div>
+              )}
+
+              <form
                   onSubmit={mode === 'signin' ? handleSignIn : handleSignUp}
                   style={{ display: 'grid', gap: 14, marginTop: 8 }}
                 >
@@ -322,7 +262,6 @@ export const AuthSheet: React.FC<AuthSheetProps> = ({
                       : 'إنشاء حساب جديد'}
                   </button>
                 </form>
-              )}
             </>
           )}
 

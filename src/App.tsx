@@ -18,12 +18,10 @@ import {
 import { curMk, addMonths, todayStr } from './lib/dates.ts';
 import { formatMoney } from './lib/money.ts';
 import { CATS, PAYS } from './lib/constants.ts';
-import {
-  getStoredAuthUser,
-  saveStoredAuthUser,
-} from './lib/auth.ts';
+import { clearLegacyAuthStorage } from './lib/auth.ts';
 import {
   getSupabaseClient,
+  getSessionUser,
   pushStateToSupabase,
   pullStateFromSupabase,
   supabaseAuthSignOut,
@@ -66,7 +64,7 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Authentication State
-  const [currentUser, setCurrentUser] = useState<AuthUser | null>(getStoredAuthUser);
+  const [currentUser, setCurrentUser] = useState<AuthUser | null>(null);
   const [authSheetOpen, setAuthSheetOpen] = useState(false);
 
   // Sheets state
@@ -153,56 +151,53 @@ export default function App() {
     setAppState(newState);
     saveLocalState(newState);
 
-    // Background push to Supabase for the current user
-    const client = getSupabaseClient(newState);
-    if (client) {
+    // Cloud sync only for a logged-in user; guests keep data on this device
+    if (currentUser && getSupabaseClient(newState)) {
       pushStateToSupabase(newState, currentUser).catch(err => {
         console.warn('Background Supabase sync failed:', err);
       });
     }
   };
 
-  // Attempt initial pull on mount if Supabase is configured
-  useEffect(() => {
-    const client = getSupabaseClient(appState);
-    if (client) {
-      pullStateFromSupabase(appState, currentUser).then(res => {
-        if (res.ok && res.data) {
-          if (
-            res.data.expenses.length > appState.expenses.length ||
-            res.data.incomes.length > appState.incomes.length
-          ) {
-            setAppState(res.data);
-            saveLocalState(res.data);
-            showToast('تمت المزامنة السحابية بحسابك');
-          }
-        }
-      });
-    }
-  }, [currentUser?.id]);
-
-  // Auth Handlers
-  const handleLoginSuccess = async (user: AuthUser) => {
-    setCurrentUser(user);
-    saveStoredAuthUser(user);
-
-    // Pull private cloud data for this user
+  // Pull the user's cloud data; if they have none yet, upload what's on this device
+  const syncAfterSignIn = async (user: AuthUser, announce: boolean) => {
     const res = await pullStateFromSupabase(appState, user);
     if (res.ok && res.data) {
       setAppState(res.data);
       saveLocalState(res.data);
-      showToast('تم استرجاع بياناتك السحابية بنجاح ✓');
-    } else {
-      // If user has local data, push it up to associate with their new account
-      if (appState.expenses.length > 0 || appState.incomes.length > 0) {
-        pushStateToSupabase(appState, user);
-      }
+      if (announce) showToast('تم استرجاع بياناتك السحابية بنجاح ✓');
+    } else if (
+      appState.expenses.length > 0 ||
+      appState.incomes.length > 0 ||
+      appState.obligations.length > 0
+    ) {
+      pushStateToSupabase(appState, user);
     }
+  };
+
+  // Restore the Supabase session on startup (the only source of truth for login)
+  useEffect(() => {
+    clearLegacyAuthStorage();
+    getSessionUser().then(user => {
+      if (user) {
+        setCurrentUser(user);
+        syncAfterSignIn(user, false);
+      }
+    });
+  }, []);
+
+  // Auth Handlers
+  const handleLoginSuccess = async (user: AuthUser) => {
+    setCurrentUser(user);
+    await syncAfterSignIn(user, true);
   };
 
   const handleLogout = async () => {
     setCurrentUser(null);
-    saveStoredAuthUser(null);
+    // The data lives in the user's cloud account; don't leave it on a shared device
+    const fresh = defaultState();
+    setAppState(fresh);
+    saveLocalState(fresh);
     await supabaseAuthSignOut();
     if (currentRoute === 'admin') {
       navigateTo('home');
@@ -649,7 +644,16 @@ export default function App() {
         />
       )}
 
-      {currentRoute === 'admin' && (
+      {currentRoute === 'admin' && !currentUser?.isAdmin && (
+        <div className="card" style={{ margin: 16, padding: 20, textAlign: 'center' }}>
+          <p style={{ marginBottom: 12 }}>هذه الصفحة للمدير فقط. سجّل الدخول بحساب المدير.</p>
+          <button type="button" className="btn primary" onClick={() => navigateTo('home')}>
+            العودة للرئيسية
+          </button>
+        </div>
+      )}
+
+      {currentRoute === 'admin' && currentUser?.isAdmin && (
         <AdminView
           state={appState}
           currentUser={currentUser}

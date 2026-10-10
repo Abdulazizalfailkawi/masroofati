@@ -1,7 +1,6 @@
 import { createClient, SupabaseClient, User } from '@supabase/supabase-js';
 import { AppState, AuthUser, AdminUserRecord } from '../types.ts';
 import { normalizeState } from './storage.ts';
-import { isUserAdmin } from './auth.ts';
 
 let clientInstance: SupabaseClient | null = null;
 let cachedUrl = '';
@@ -55,35 +54,43 @@ export function getSupabaseClient(state?: AppState): SupabaseClient | null {
 }
 
 export const SUPABASE_SQL_SCRIPT = `-- ==========================================
--- كود إنشاء وتحديث جدول المزامنة لتطبيق مصروفاتي
+-- كود إنشاء جدول المزامنة لتطبيق مصروفاتي (آمن: كل مستخدم يرى بياناته فقط)
 -- افتح Supabase -> SQL Editor والصق هذا الكود ثم اضغط Run
 -- ==========================================
 
 create table if not exists public.masroofati_sync (
-  id text primary key default 'default_user',
+  id text primary key,
   user_email text,
   data jsonb not null,
   updated_at timestamptz default now()
 );
 
--- إضافة عمود user_email إذا لم يكن موجوداً
-do $$
-begin
-  if not exists (select 1 from information_schema.columns where table_name='masroofati_sync' and column_name='user_email') then
-    alter table public.masroofati_sync add column user_email text;
-  end if;
-end $$;
+create table if not exists public.masroofati_admins (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  created_at timestamptz default now()
+);
+alter table public.masroofati_admins enable row level security;
 
--- تفعيل أمان الصفوف (Row Level Security)
+create or replace function public.is_masroofati_admin()
+returns boolean language sql stable security definer set search_path = ''
+as $$ select exists (select 1 from public.masroofati_admins a where a.user_id = auth.uid()); $$;
+revoke all on function public.is_masroofati_admin() from public, anon;
+grant execute on function public.is_masroofati_admin() to authenticated;
+
 alter table public.masroofati_sync enable row level security;
-
--- السماح بالقراءة والتعديل
 drop policy if exists "Allow public access" on public.masroofati_sync;
-create policy "Allow public access"
-  on public.masroofati_sync
-  for all
-  using (true)
-  with check (true);
+
+create policy "own_or_admin_select" on public.masroofati_sync for select to authenticated
+  using (id = (select auth.uid())::text or (select public.is_masroofati_admin()));
+create policy "own_insert" on public.masroofati_sync for insert to authenticated
+  with check (id = (select auth.uid())::text);
+create policy "own_update" on public.masroofati_sync for update to authenticated
+  using (id = (select auth.uid())::text) with check (id = (select auth.uid())::text);
+create policy "own_or_admin_delete" on public.masroofati_sync for delete to authenticated
+  using (id = (select auth.uid())::text or (select public.is_masroofati_admin()));
+
+-- لتعيين المدير: أنشئ حسابك من التطبيق ثم شغّل:
+-- insert into public.masroofati_admins (user_id) select id from auth.users where email = 'بريدك';
 `;
 
 export async function testSupabaseConnection(state?: AppState): Promise<{ ok: boolean; message: string }> {
@@ -114,19 +121,24 @@ export async function testSupabaseConnection(state?: AppState): Promise<{ ok: bo
   }
 }
 
-// User-specific sync logic
+// User-specific sync logic. Cloud sync requires a logged-in Supabase user;
+// the row id is the auth user id, which is what the RLS policies check.
 export async function pushStateToSupabase(
   state: AppState,
   user?: AuthUser | null
 ): Promise<{ ok: boolean; message: string }> {
+  if (!user) {
+    return { ok: false, message: 'البيانات محفوظة على جهازك. سجّل الدخول للمزامنة السحابية.' };
+  }
+
   const client = getSupabaseClient(state);
   if (!client) {
     return { ok: false, message: 'Supabase غير مُهيأ' };
   }
 
   try {
-    const targetId = user?.id || (user?.email ? `usr_${user.email.replace(/[@.]/g, '_')}` : 'default_user');
-    const userEmail = user?.email || 'local_user';
+    const targetId = user.id;
+    const userEmail = user.email;
 
     const payload = {
       id: targetId,
@@ -159,13 +171,17 @@ export async function pullStateFromSupabase(
   state?: AppState,
   user?: AuthUser | null
 ): Promise<{ ok: boolean; data?: AppState; message: string }> {
+  if (!user) {
+    return { ok: false, message: 'سجّل الدخول لجلب بياناتك السحابية' };
+  }
+
   const client = getSupabaseClient(state);
   if (!client) {
     return { ok: false, message: 'Supabase غير مُهيأ' };
   }
 
   try {
-    const targetId = user?.id || (user?.email ? `usr_${user.email.replace(/[@.]/g, '_')}` : 'default_user');
+    const targetId = user.id;
 
     const { data, error } = await client
       .from('masroofati_sync')
@@ -190,7 +206,43 @@ export async function pullStateFromSupabase(
 }
 
 // Authentication Helpers
-export async function supabaseAuthSignUp(email: string, pass: string): Promise<{ ok: boolean; user?: AuthUser; message: string }> {
+
+// Admin status is decided by the database (masroofati_admins table), never by the client.
+async function toAuthUser(client: SupabaseClient, user: User): Promise<AuthUser> {
+  let isAdmin = false;
+  try {
+    const { data } = await client.rpc('is_masroofati_admin');
+    isAdmin = data === true;
+  } catch (_) {}
+  return { id: user.id, email: user.email || '', isAdmin };
+}
+
+function translateAuthError(message: string): string {
+  const m = message.toLowerCase();
+  if (m.includes('invalid login credentials')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة';
+  if (m.includes('email not confirmed')) return 'لم يتم تأكيد البريد بعد. افتح بريدك واضغط رابط التأكيد ثم سجّل الدخول.';
+  if (m.includes('already registered')) return 'هذا البريد مسجّل مسبقاً. استخدم تسجيل الدخول.';
+  if (m.includes('password')) return 'كلمة المرور ضعيفة. استخدم 6 أحرف على الأقل.';
+  if (m.includes('rate limit')) return 'محاولات كثيرة، حاول بعد قليل.';
+  return message;
+}
+
+export async function getSessionUser(): Promise<AuthUser | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data } = await client.auth.getSession();
+    const user = data.session?.user;
+    return user ? await toAuthUser(client, user) : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+export async function supabaseAuthSignUp(
+  email: string,
+  pass: string
+): Promise<{ ok: boolean; user?: AuthUser; needsConfirmation?: boolean; message: string }> {
   const client = getSupabaseClient();
   if (!client) return { ok: false, message: 'Supabase غير متصل' };
 
@@ -198,18 +250,22 @@ export async function supabaseAuthSignUp(email: string, pass: string): Promise<{
     const { data, error } = await client.auth.signUp({
       email,
       password: pass,
+      options: { emailRedirectTo: window.location.origin },
     });
 
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: translateAuthError(error.message) };
     if (!data.user) return { ok: false, message: 'فشل إنشاء الحساب' };
 
-    const authUser: AuthUser = {
-      id: data.user.id,
-      email: data.user.email || email,
-      isAdmin: isUserAdmin(data.user.email || email),
-    };
+    // Email confirmation is enabled: no session until the user clicks the link
+    if (!data.session) {
+      return {
+        ok: true,
+        needsConfirmation: true,
+        message: 'تم إنشاء الحساب. افتح بريدك واضغط رابط التأكيد، ثم سجّل الدخول.',
+      };
+    }
 
-    return { ok: true, user: authUser, message: 'تم إنشاء الحساب بنجاح' };
+    return { ok: true, user: await toAuthUser(client, data.user), message: 'تم إنشاء الحساب بنجاح' };
   } catch (err: any) {
     return { ok: false, message: err.message || 'خطأ في التسجيل' };
   }
@@ -225,16 +281,10 @@ export async function supabaseAuthSignIn(email: string, pass: string): Promise<{
       password: pass,
     });
 
-    if (error) return { ok: false, message: error.message };
+    if (error) return { ok: false, message: translateAuthError(error.message) };
     if (!data.user) return { ok: false, message: 'بيانات الدخول غير صحيحة' };
 
-    const authUser: AuthUser = {
-      id: data.user.id,
-      email: data.user.email || email,
-      isAdmin: isUserAdmin(data.user.email || email),
-    };
-
-    return { ok: true, user: authUser, message: 'تم تسجيل الدخول بنجاح' };
+    return { ok: true, user: await toAuthUser(client, data.user), message: 'تم تسجيل الدخول بنجاح' };
   } catch (err: any) {
     return { ok: false, message: err.message || 'خطأ أثناء تسجيل الدخول' };
   }

@@ -9,7 +9,6 @@ import {
 } from '../lib/supabase.ts';
 import { formatMoney } from '../lib/money.ts';
 import { fmtDate, curMk } from '../lib/dates.ts';
-import { ADMIN_EMAIL } from '../lib/auth.ts';
 import { HeaderBand } from '../components/HeaderBand.tsx';
 
 interface AdminViewProps {
@@ -114,7 +113,7 @@ export const AdminView: React.FC<AdminViewProps> = ({
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <div>
               <span className="chip good">حساب المدير المعتمد</span>
-              <h2 style={{ fontSize: 18, marginTop: 4 }}>{currentUser?.email || ADMIN_EMAIL}</h2>
+              <h2 style={{ fontSize: 18, marginTop: 4 }}>{currentUser?.email}</h2>
             </div>
             <button
               type="button"
