@@ -114,19 +114,30 @@ export async function testSupabaseConnection(state?: AppState): Promise<{ ok: bo
   }
 }
 
-// User-specific sync logic
+export function getUserSyncId(user: AuthUser): string {
+  if (user.isAdmin) return 'admin_master';
+  if (user.id && user.id.length > 5) return `usr_${user.id}`;
+  return `usr_${user.email.trim().toLowerCase().replace(/[^a-zA-Z0-9]/g, '_')}`;
+}
+
+// User-specific sync logic - strictly requires a logged in user
 export async function pushStateToSupabase(
   state: AppState,
   user?: AuthUser | null
 ): Promise<{ ok: boolean; message: string }> {
+  // Never push to cloud if user is not logged in (protects privacy)
+  if (!user || !user.email) {
+    return { ok: false, message: 'البيانات محفوظة محلياً. سجّل الدخول للمزامنة السحابية.' };
+  }
+
   const client = getSupabaseClient(state);
   if (!client) {
     return { ok: false, message: 'Supabase غير مُهيأ' };
   }
 
   try {
-    const targetId = user?.id || (user?.email ? `usr_${user.email.replace(/[@.]/g, '_')}` : 'default_user');
-    const userEmail = user?.email || 'local_user';
+    const targetId = getUserSyncId(user);
+    const userEmail = user.email.trim().toLowerCase();
 
     const payload = {
       id: targetId,
@@ -135,6 +146,7 @@ export async function pushStateToSupabase(
         ...state,
         _syncMeta: {
           userEmail,
+          userId: user.id,
           updatedAt: new Date().toISOString(),
         },
       },
@@ -149,7 +161,7 @@ export async function pushStateToSupabase(
       return { ok: false, message: error.message };
     }
 
-    return { ok: true, message: 'تم رفع ومزامنة البيانات مع السحابة بنجاح' };
+    return { ok: true, message: 'تم حفظ البيانات في حسابك السحابي بنجاح' };
   } catch (err: any) {
     return { ok: false, message: err?.message || 'خطأ أثناء الرفع' };
   }
@@ -159,13 +171,18 @@ export async function pullStateFromSupabase(
   state?: AppState,
   user?: AuthUser | null
 ): Promise<{ ok: boolean; data?: AppState; message: string }> {
+  // Never pull from cloud if user is not logged in (ensures each guest starts clean)
+  if (!user || !user.email) {
+    return { ok: false, message: 'يتطلب تسجيل الدخول لجلب البيانات السحابية' };
+  }
+
   const client = getSupabaseClient(state);
   if (!client) {
     return { ok: false, message: 'Supabase غير مُهيأ' };
   }
 
   try {
-    const targetId = user?.id || (user?.email ? `usr_${user.email.replace(/[@.]/g, '_')}` : 'default_user');
+    const targetId = getUserSyncId(user);
 
     const { data, error } = await client
       .from('masroofati_sync')
@@ -183,7 +200,7 @@ export async function pullStateFromSupabase(
 
     const normalized = normalizeState(data.data);
     normalized.settings.lastSyncedAt = data.updated_at || new Date().toISOString();
-    return { ok: true, data: normalized, message: 'تم استرجاع البيانات من السحابة بنجاح' };
+    return { ok: true, data: normalized, message: 'تم استرجاع بيانات حسابك من السحابة بنجاح' };
   } catch (err: any) {
     return { ok: false, message: err?.message || 'خطأ أثناء الجلب' };
   }
