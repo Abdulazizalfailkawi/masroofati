@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { CategoryId } from '../../types.ts';
-import { CATS } from '../../lib/constants.ts';
+import { Category, CategoryId } from '../../types.ts';
 import { amtField, parseAmount } from '../../lib/money.ts';
 
 interface BudgetSheetProps {
+  cats: Category[];
   categoryId: CategoryId | null;
   currentBudget: number | undefined;
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface BudgetSheetProps {
 }
 
 export const BudgetSheet: React.FC<BudgetSheetProps> = ({
+  cats,
   categoryId,
   currentBudget,
   isOpen,
@@ -21,7 +22,7 @@ export const BudgetSheet: React.FC<BudgetSheetProps> = ({
   const [amt, setAmt] = useState('');
   const [err, setErr] = useState<string | null>(null);
 
-  const category = CATS.find(c => c.id === categoryId);
+  const category = cats.find(c => c.id === categoryId);
 
   useEffect(() => {
     if (currentBudget) {

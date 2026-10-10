@@ -58,3 +58,8 @@ export const PERIODS: [PeriodType, string][] = [
   ['all', 'الكل'],
   ['range', 'تاريخ محدد'],
 ];
+
+export const CAT_EMOJIS: string[] = [
+  '🍕', '🛒', '🚗', '🏥', '🎮', '📚', '✈️', '🐾',
+  '👕', '💄', '🎁', '🏋️', '🔧', '🍼', '🕌', '💸',
+];

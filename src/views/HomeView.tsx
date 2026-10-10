@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { AppState, RouteName, AuthUser } from '../types.ts';
-import { CATS } from '../lib/constants.ts';
+import { allCats } from '../lib/categories.ts';
 import { curMk, dim, daysPhrase, splitD, todayStr } from '../lib/dates.ts';
 import { formatMoney, parts, sizeClass } from '../lib/money.ts';
 import { summary, statusOf, balanceNow, buildAlerts } from '../lib/analytics.ts';
@@ -130,7 +130,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     );
   };
 
-  const rows = CATS.map(c => ({
+  const rows = allCats(state).map(c => ({
     c,
     a: s.byCat[c.id] || 0,
   }))

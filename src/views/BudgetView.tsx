@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppState, CategoryId } from '../types.ts';
-import { CATS } from '../lib/constants.ts';
+import { allCats } from '../lib/categories.ts';
 import { formatMoney } from '../lib/money.ts';
 import { summary } from '../lib/analytics.ts';
 import { HeaderBand } from '../components/HeaderBand.tsx';
@@ -23,6 +23,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   onSetBudget,
 }) => {
   const s = summary(viewedMk, state);
+  const CATS = allCats(state);
 
   const tb = CATS.reduce((acc, c) => acc + (state.budgets[c.id] || 0), 0);
   const tsp = CATS.filter(c => state.budgets[c.id]).reduce(

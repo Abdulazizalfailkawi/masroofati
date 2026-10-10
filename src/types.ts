@@ -1,4 +1,4 @@
-export type CategoryId = 'food' | 'transport' | 'shopping' | 'coffee' | 'fun' | 'bills' | 'subs' | 'other';
+export type CategoryId = string;
 export type PaymentId = 'cash' | 'knet' | 'card' | 'transfer' | 'other';
 export type IncomeSourceId = 'salary' | 'allowance' | 'extra' | 'other';
 export type ThemeMode = 'auto' | 'light' | 'dark';
@@ -39,6 +39,9 @@ export interface Income {
   date: string; // YYYY-MM-DD
   rec: boolean; // recurring monthly
   ts: number;
+  ext?: boolean; // extra income: kept outside the monthly budget
+  name?: string; // label for extra income (e.g. car fund)
+  icon?: string; // emoji for extra income
 }
 
 export interface Obligation {
@@ -50,6 +53,7 @@ export interface Obligation {
   count: number | null; // number of installments or null if indefinite
   icon: string;
   paid: Record<string, string>; // { "YYYY-MM": "YYYY-MM-DD" }
+  fund?: string; // id of an extra income that pays this obligation (outside the budget)
   ts: number;
 }
 
@@ -69,6 +73,7 @@ export interface AppState {
   incomes: Income[];
   obligations: Obligation[];
   budgets: Partial<Record<CategoryId, number>>;
+  customCats: Category[];
 }
 
 export interface ObligationItem {

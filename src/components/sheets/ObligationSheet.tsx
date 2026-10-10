@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Obligation } from '../../types.ts';
+import { Income, Obligation } from '../../types.ts';
 import { OB_ICONS, OB_GUESS } from '../../lib/constants.ts';
 import { amtField, parseAmount, normDigits } from '../../lib/money.ts';
 import { isDate, todayStr } from '../../lib/dates.ts';
 
 interface ObligationSheetProps {
   obligation: Obligation | null;
+  funds: Income[];
   isOpen: boolean;
   onClose: () => void;
   onSave: (obData: {
@@ -16,12 +17,14 @@ interface ObligationSheetProps {
     rec: boolean;
     count: number | null;
     icon: string;
+    fund?: string;
   }) => void;
   onDelete?: (id: string) => void;
 }
 
 export const ObligationSheet: React.FC<ObligationSheetProps> = ({
   obligation,
+  funds,
   isOpen,
   onClose,
   onSave,
@@ -33,6 +36,7 @@ export const ObligationSheet: React.FC<ObligationSheetProps> = ({
   const [rec, setRec] = useState(true);
   const [count, setCount] = useState('');
   const [icon, setIcon] = useState('📌');
+  const [fund, setFund] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [iconTouched, setIconTouched] = useState(false);
 
@@ -45,6 +49,7 @@ export const ObligationSheet: React.FC<ObligationSheetProps> = ({
       setCount(obligation.count ? String(obligation.count) : '');
       setIcon(obligation.icon);
       setIconTouched(true);
+      setFund(obligation.fund || '');
     } else {
       setName('');
       setAmt('');
@@ -53,6 +58,7 @@ export const ObligationSheet: React.FC<ObligationSheetProps> = ({
       setCount('');
       setIcon('📌');
       setIconTouched(false);
+      setFund('');
     }
     setErr(null);
   }, [obligation, isOpen]);
@@ -107,6 +113,7 @@ export const ObligationSheet: React.FC<ObligationSheetProps> = ({
       rec,
       count: parsedCount,
       icon,
+      fund: fund || undefined,
     });
     onClose();
   };
@@ -188,6 +195,20 @@ export const ObligationSheet: React.FC<ObligationSheetProps> = ({
                 placeholder="مثلاً 12 — اتركه فاضي إذا مستمر"
                 onChange={e => setCount(e.target.value)}
               />
+            </label>
+          )}
+
+          {funds.length > 0 && (
+            <label className="fld">
+              <span>يُدفع من</span>
+              <select value={fund} onChange={e => setFund(e.target.value)}>
+                <option value="">الميزانية الشهرية</option>
+                {funds.map(f => (
+                  <option key={f.id} value={f.id}>
+                    {f.icon || '⭐'} {f.name || 'دخل إضافي'} (خارج الميزانية)
+                  </option>
+                ))}
+              </select>
             </label>
           )}
 

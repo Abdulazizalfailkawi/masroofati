@@ -1,10 +1,11 @@
-import { AppState, CategoryId, IncomeItem, MonthSummary, ObligationItem, AlertItem } from '../types.ts';
-import { CATS } from './constants.ts';
+import { AppState, Income, Obligation, CategoryId, IncomeItem, MonthSummary, ObligationItem, AlertItem } from '../types.ts';
+import { allCats } from './categories.ts';
 import { addDays, addMonths, curMk, dateIn, dayDiff, daysPhrase, dim, fmtDate, mkOf, monthDiff, splitD, todayStr } from './dates.ts';
 import { formatMoney } from './money.ts';
 
 export function incomeItems(mk: string, state: AppState): IncomeItem[] {
   return state.incomes
+    .filter(i => !i.ext)
     .filter(i => (i.rec ? mkOf(i.date) <= mk : mkOf(i.date) === mk))
     .map(i => ({
       ...i,
@@ -30,10 +31,38 @@ export function obligationItems(mk: string, state: AppState): ObligationItem[] {
   return out.sort((a, b) => a.due.localeCompare(b.due) || a.o.name.localeCompare(b.o.name, 'ar'));
 }
 
+// Obligations paid from an extra-income fund stay out of the monthly budget.
+export function budgetObligationItems(mk: string, state: AppState): ObligationItem[] {
+  return obligationItems(mk, state).filter(x => !x.o.fund);
+}
+
+export interface FundSummary {
+  income: Income;
+  paidTotal: number; // already paid from the fund
+  plannedLeft: number; // known remaining installments (only when counts are set)
+  balance: number; // amt - paidTotal
+  obligations: Obligation[];
+}
+
+export function fundSummaries(state: AppState): FundSummary[] {
+  return state.incomes
+    .filter(i => i.ext)
+    .map(income => {
+      const obligations = state.obligations.filter(o => o.fund === income.id);
+      const paidTotal = obligations.reduce((acc, o) => acc + Object.keys(o.paid).length * o.amt, 0);
+      const plannedLeft = obligations.reduce((acc, o) => {
+        if (o.rec && o.count) return acc + Math.max(0, o.count - Object.keys(o.paid).length) * o.amt;
+        return acc + (Object.keys(o.paid).length ? 0 : o.amt);
+      }, 0);
+      return { income, paidTotal, plannedLeft, balance: income.amt - paidTotal, obligations };
+    })
+    .sort((a, b) => b.income.ts - a.income.ts);
+}
+
 export function summary(mk: string, state: AppState): MonthSummary {
   const incList = incomeItems(mk, state);
   const exps = state.expenses.filter(e => mkOf(e.date) === mk);
-  const obs = obligationItems(mk, state);
+  const obs = budgetObligationItems(mk, state);
 
   const inc = incList.reduce((acc, i) => acc + i.amt, 0);
   const exp = exps.reduce((acc, e) => acc + e.amt, 0);
@@ -71,7 +100,7 @@ export function balanceNow(mk: string, state: AppState): number | null {
     .filter(e => mkOf(e.date) === mk && e.date <= t)
     .reduce((acc, e) => acc + e.amt, 0);
 
-  const paid = obligationItems(mk, state)
+  const paid = budgetObligationItems(mk, state)
     .filter(x => x.paidOn)
     .reduce((acc, x) => acc + x.o.amt, 0);
 
@@ -134,7 +163,7 @@ export function buildAlerts(state: AppState, viewedMk: string, loadWarn: string 
     });
 
   const s = summary(current, state);
-  CATS.forEach(c => {
+  allCats(state).forEach(c => {
     const b = state.budgets[c.id];
     const sp = s.byCat[c.id] || 0;
     if (!b) return;

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Income, IncomeSourceId } from '../../types.ts';
-import { SOURCES } from '../../lib/constants.ts';
+import { SOURCES, CAT_EMOJIS } from '../../lib/constants.ts';
 import { amtField, parseAmount } from '../../lib/money.ts';
 import { isDate, todayStr } from '../../lib/dates.ts';
 
@@ -14,6 +14,9 @@ interface IncomeSheetProps {
     src: IncomeSourceId;
     date: string;
     rec: boolean;
+    ext?: boolean;
+    name?: string;
+    icon?: string;
   }) => void;
   onDelete?: (id: string) => void;
 }
@@ -29,6 +32,9 @@ export const IncomeSheet: React.FC<IncomeSheetProps> = ({
   const [src, setSrc] = useState<IncomeSourceId>('salary');
   const [date, setDate] = useState(todayStr());
   const [rec, setRec] = useState(true);
+  const [ext, setExt] = useState(false);
+  const [name, setName] = useState('');
+  const [icon, setIcon] = useState('⭐');
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -37,11 +43,17 @@ export const IncomeSheet: React.FC<IncomeSheetProps> = ({
       setSrc(income.src);
       setDate(income.date);
       setRec(income.rec);
+      setExt(!!income.ext);
+      setName(income.name || '');
+      setIcon(income.icon || '⭐');
     } else {
       setAmt('');
       setSrc('salary');
       setDate(todayStr());
       setRec(true);
+      setExt(false);
+      setName('');
+      setIcon('⭐');
     }
     setErr(null);
   }, [income, isOpen]);
@@ -58,12 +70,20 @@ export const IncomeSheet: React.FC<IncomeSheetProps> = ({
       return;
     }
 
+    const cleanName = name.trim().slice(0, 40);
+    const cleanIcon = Array.from(icon.trim()).slice(0, 2).join('') || '⭐';
+    if (ext && !cleanName) {
+      setErr('اكتب اسم الدخل الإضافي (مثلاً: حق السيارة)');
+      return;
+    }
+
     onSave({
       id: income ? income.id : undefined,
       amt: parsedAmt,
-      src,
+      src: ext ? 'extra' : src,
       date,
-      rec,
+      rec: ext ? false : rec,
+      ...(ext ? { ext: true, name: cleanName, icon: cleanIcon } : {}),
     });
     onClose();
   };
@@ -102,6 +122,50 @@ export const IncomeSheet: React.FC<IncomeSheetProps> = ({
             />
           </label>
 
+          <label className="swrow">
+            <span>دخل إضافي خارج الميزانية</span>
+            <input
+              type="checkbox"
+              role="switch"
+              checked={ext}
+              onChange={e => setExt(e.target.checked)}
+              disabled={!!income}
+            />
+          </label>
+
+          {ext && (
+            <>
+              <label className="fld">
+                <span>اسم الدخل (له شنو؟)</span>
+                <input
+                  type="text"
+                  name="name"
+                  maxLength={40}
+                  placeholder="مثلاً: حق السيارة"
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                />
+              </label>
+              <div className="fld">
+                <span>الإيموجي</span>
+                <div className="chips">
+                  {['🚗', '🏠', '✈️', '🎓', '💍', '⭐', ...CAT_EMOJIS.slice(0, 6)].map(ic => (
+                    <label key={ic} className="opt">
+                      <input type="radio" name="icon" checked={icon === ic} onChange={() => setIcon(ic)} />
+                      <span>
+                        <em aria-hidden="true">{ic}</em>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              <p className="hint muted" style={{ fontSize: 13 }}>
+                هذا المبلغ ما يدخل بدخلك الشهري ولا بالميزانية. اربط فيه التزاماتك من شاشة الالتزامات وبيتخصم منه فقط.
+              </p>
+            </>
+          )}
+
+          {!ext && (
           <div className="fld">
             <span>المصدر</span>
             <div className="chips">
@@ -121,6 +185,7 @@ export const IncomeSheet: React.FC<IncomeSheetProps> = ({
               ))}
             </div>
           </div>
+          )}
 
           <label className="fld">
             <span>التاريخ</span>
@@ -132,19 +197,23 @@ export const IncomeSheet: React.FC<IncomeSheetProps> = ({
             />
           </label>
 
-          <label className="swrow">
-            <span>يتكرر شهرياً</span>
-            <input
-              type="checkbox"
-              role="switch"
-              checked={rec}
-              onChange={e => setRec(e.target.checked)}
-            />
-          </label>
+          {!ext && (
+            <>
+              <label className="swrow">
+                <span>يتكرر شهرياً</span>
+                <input
+                  type="checkbox"
+                  role="switch"
+                  checked={rec}
+                  onChange={e => setRec(e.target.checked)}
+                />
+              </label>
 
-          <p className="hint muted" style={{ fontSize: 13 }}>
-            الدخل المتكرر يتحسب كل شهر من هذا التاريخ. إذا تغيّر راتبك، عدّل المبلغ أو أضف دخل جديد.
-          </p>
+              <p className="hint muted" style={{ fontSize: 13 }}>
+                الدخل المتكرر يتحسب كل شهر من هذا التاريخ. إذا تغيّر راتبك، عدّل المبلغ أو أضف دخل جديد.
+              </p>
+            </>
+          )}
 
           {err && (
             <p className="err" role="alert">

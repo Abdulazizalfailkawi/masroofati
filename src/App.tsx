@@ -17,7 +17,8 @@ import {
 } from './lib/storage.ts';
 import { curMk, addMonths, todayStr } from './lib/dates.ts';
 import { formatMoney } from './lib/money.ts';
-import { CATS, PAYS } from './lib/constants.ts';
+import { PAYS } from './lib/constants.ts';
+import { allCats } from './lib/categories.ts';
 import { clearLegacyAuthStorage } from './lib/auth.ts';
 import {
   getSupabaseClient,
@@ -278,11 +279,12 @@ export default function App() {
     rec: boolean;
     count: number | null;
     icon: string;
+    fund?: string;
   }) => {
     let updatedObs = [...appState.obligations];
     if (data.id) {
       updatedObs = updatedObs.map(o =>
-        o.id === data.id ? { ...o, ...data } : o
+        o.id === data.id ? { ...o, ...data, fund: data.fund } : o
       );
     } else {
       updatedObs.push({
@@ -293,6 +295,7 @@ export default function App() {
         rec: data.rec,
         count: data.count,
         icon: data.icon,
+        ...(data.fund ? { fund: data.fund } : {}),
         paid: {},
         ts: Date.now(),
       });
@@ -359,6 +362,9 @@ export default function App() {
     src: any;
     date: string;
     rec: boolean;
+    ext?: boolean;
+    name?: string;
+    icon?: string;
   }) => {
     let updatedIncomes = [...appState.incomes];
     if (data.id) {
@@ -373,6 +379,7 @@ export default function App() {
         date: data.date,
         rec: data.rec,
         ts: Date.now(),
+        ...(data.ext ? { ext: true, name: data.name, icon: data.icon } : {}),
       });
     }
 
@@ -391,6 +398,9 @@ export default function App() {
         const updated = {
           ...appState,
           incomes: appState.incomes.filter(i => i.id !== id),
+          obligations: appState.obligations.map(o =>
+            o.fund === id ? { ...o, fund: undefined } : o
+          ),
         };
         updateStateAndPersist(updated);
         setIncomeSheetOpen(false);
@@ -399,6 +409,17 @@ export default function App() {
       },
     });
     setDialogOpen(true);
+  };
+
+  const handleAddCat = (name: string, icon: string): CategoryId => {
+    const existing = appState.customCats.find(c => c.name === name && c.icon === icon);
+    if (existing) return existing.id;
+    const id = 'c_' + uid();
+    updateStateAndPersist({
+      ...appState,
+      customCats: [...appState.customCats, { id, name, icon }],
+    });
+    return id;
   };
 
   // Budget Handlers
@@ -509,7 +530,7 @@ export default function App() {
 
     const header = ['التاريخ', 'التصنيف', 'المبلغ (د.ك)', 'طريقة الدفع', 'الملاحظة'];
     const rows = appState.expenses.map(e => {
-      const catObj = CATS.find(c => c.id === e.cat);
+      const catObj = allCats(appState).find(c => c.id === e.cat);
       const payObj = PAYS.find(p => p.id === e.pay);
       return [
         e.date,
@@ -620,6 +641,7 @@ export default function App() {
           onNextMonth={handleNextMonth}
           onCurMonth={handleCurMonth}
           onNavigate={navigateTo}
+          onAddObligation={() => handleTriggerAction('add-ob')}
           onEditIncome={inc => {
             setEditingIncome(inc);
             setIncomeSheetOpen(true);
@@ -690,6 +712,8 @@ export default function App() {
       {/* Sheets */}
       <ExpenseSheet
         expense={editingExpense}
+        cats={allCats(appState)}
+        onAddCat={handleAddCat}
         isOpen={expenseSheetOpen}
         onClose={() => setExpenseSheetOpen(false)}
         onSave={handleSaveExpense}
@@ -698,6 +722,7 @@ export default function App() {
 
       <ObligationSheet
         obligation={editingObligation}
+        funds={appState.incomes.filter(i => i.ext)}
         isOpen={obligationSheetOpen}
         onClose={() => setObligationSheetOpen(false)}
         onSave={handleSaveObligation}
@@ -713,6 +738,7 @@ export default function App() {
       />
 
       <BudgetSheet
+        cats={allCats(appState)}
         categoryId={selectedBudgetCat}
         currentBudget={selectedBudgetCat ? appState.budgets[selectedBudgetCat] : undefined}
         isOpen={budgetSheetOpen}

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Expense, CategoryId, PaymentId } from '../../types.ts';
-import { CATS, PAYS } from '../../lib/constants.ts';
+import { Category, Expense, CategoryId, PaymentId } from '../../types.ts';
+import { CAT_EMOJIS, PAYS } from '../../lib/constants.ts';
 import { amtField, parseAmount } from '../../lib/money.ts';
 import { isDate, todayStr } from '../../lib/dates.ts';
 
 interface ExpenseSheetProps {
   expense: Expense | null;
+  cats: Category[];
+  onAddCat: (name: string, icon: string) => CategoryId;
   isOpen: boolean;
   onClose: () => void;
   onSave: (expenseData: {
@@ -21,6 +23,8 @@ interface ExpenseSheetProps {
 
 export const ExpenseSheet: React.FC<ExpenseSheetProps> = ({
   expense,
+  cats,
+  onAddCat,
   isOpen,
   onClose,
   onSave,
@@ -32,6 +36,9 @@ export const ExpenseSheet: React.FC<ExpenseSheetProps> = ({
   const [note, setNote] = useState('');
   const [pay, setPay] = useState<PaymentId>('cash');
   const [err, setErr] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newIcon, setNewIcon] = useState('🍕');
 
   useEffect(() => {
     if (expense) {
@@ -48,9 +55,29 @@ export const ExpenseSheet: React.FC<ExpenseSheetProps> = ({
       setPay('cash');
     }
     setErr(null);
+    setAdding(false);
+    setNewName('');
+    setNewIcon('🍕');
   }, [expense, isOpen]);
 
   if (!isOpen) return null;
+
+  const handleAddCat = () => {
+    const n = newName.trim().slice(0, 24);
+    const ic = Array.from(newIcon.trim()).slice(0, 2).join('');
+    if (!n) {
+      setErr('اكتب اسم المصروف');
+      return;
+    }
+    if (!ic) {
+      setErr('اختر إيموجي');
+      return;
+    }
+    setCat(onAddCat(n, ic));
+    setAdding(false);
+    setNewName('');
+    setErr(null);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +137,7 @@ export const ExpenseSheet: React.FC<ExpenseSheetProps> = ({
           <div className="fld">
             <span>التصنيف</span>
             <div className="grid4">
-              {CATS.map(c => (
+              {cats.map(c => (
                 <label key={c.id} className="opt">
                   <input
                     type="radio"
@@ -125,8 +152,62 @@ export const ExpenseSheet: React.FC<ExpenseSheetProps> = ({
                   </span>
                 </label>
               ))}
+              <button
+                type="button"
+                className="opt"
+                style={{ background: 'none', border: 0, padding: 0 }}
+                onClick={() => setAdding(a => !a)}
+                aria-expanded={adding}
+              >
+                <span>
+                  <em aria-hidden="true">➕</em>
+                  مصروف جديد
+                </span>
+              </button>
             </div>
           </div>
+
+          {adding && (
+            <div className="fld">
+              <span>مصروف جديد (إيموجي + اسم)</span>
+              <div className="chips">
+                {CAT_EMOJIS.map(ic => (
+                  <label key={ic} className="opt">
+                    <input
+                      type="radio"
+                      name="newicon"
+                      checked={newIcon === ic}
+                      onChange={() => setNewIcon(ic)}
+                    />
+                    <span>
+                      <em aria-hidden="true">{ic}</em>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                <input
+                  type="text"
+                  aria-label="إيموجي"
+                  value={newIcon}
+                  onChange={e => setNewIcon(e.target.value)}
+                  style={{ width: 64, textAlign: 'center', fontSize: 22 }}
+                />
+                <input
+                  type="text"
+                  aria-label="اسم المصروف"
+                  maxLength={24}
+                  placeholder="مثلاً: حلاقة"
+                  value={newName}
+                  onChange={e => setNewName(e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <button type="button" className="btn primary" onClick={handleAddCat}>
+                  إضافة
+                </button>
+              </div>
+            </div>
+          )}
 
           <label className="fld">
             <span>التاريخ</span>

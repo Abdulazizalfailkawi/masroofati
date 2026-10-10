@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AppState, CategoryId, PeriodType, Expense } from '../types.ts';
-import { CATS, PAYS, PERIODS } from '../lib/constants.ts';
+import { PAYS, PERIODS } from '../lib/constants.ts';
+import { allCats } from '../lib/categories.ts';
 import { formatMoney, normDigits } from '../lib/money.ts';
 import { addDays, curMk, dow, mkOf, relDate, todayStr } from '../lib/dates.ts';
 import { HeaderBand } from '../components/HeaderBand.tsx';
@@ -11,6 +12,7 @@ interface ExpensesViewProps {
 }
 
 export const ExpensesView: React.FC<ExpensesViewProps> = ({ state, onEditExpense }) => {
+  const CATS = allCats(state);
   const [period, setPeriod] = useState<PeriodType>('month');
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string>('');

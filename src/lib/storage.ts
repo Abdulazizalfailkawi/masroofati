@@ -19,6 +19,7 @@ export const defaultState = (): AppState => ({
   incomes: [],
   obligations: [],
   budgets: {},
+  customCats: [],
 });
 
 const cleanAmt = (v: unknown): number => {
@@ -51,11 +52,20 @@ export function normalizeState(raw: any): AppState {
   out.settings.supabaseAnonKey = typeof s.supabaseAnonKey === 'string' && s.supabaseAnonKey ? s.supabaseAnonKey : 'sb_publishable_MKOVmHnEkPwj-7EN1RZBmw_bUOywDgT';
   out.settings.lastSyncedAt = typeof s.lastSyncedAt === 'string' ? s.lastSyncedAt : null;
 
-  const catIds = CATS.map(c => c.id);
+  const arr = (v: unknown) => (Array.isArray(v) ? v : []);
+  out.customCats = [];
+  const builtinIds = CATS.map(c => c.id);
+  for (const x of arr(raw.customCats)) {
+    const id = cleanStr(x && x.id, 40);
+    const name = cleanStr(x && x.name, 24);
+    const icon = cleanStr(x && x.icon, 8);
+    if (!id || !name || !icon || builtinIds.includes(id) || out.customCats.some(c => c.id === id)) continue;
+    out.customCats.push({ id, name, icon });
+    if (out.customCats.length >= 40) break;
+  }
+  const catIds = [...builtinIds, ...out.customCats.map(c => c.id)];
   const payIds = PAYS.map(p => p.id);
   const srcIds = SOURCES.map(src => src.id);
-
-  const arr = (v: unknown) => (Array.isArray(v) ? v : []);
 
   out.expenses = arr(raw.expenses)
     .map((x: any): Expense | null => {
@@ -80,8 +90,11 @@ export function normalizeState(raw: any): AppState {
         amt: cleanAmt(x.amt),
         src: (srcIds.includes(x.src) ? x.src : 'other') as IncomeSourceId,
         date: x.date,
-        rec: !!x.rec,
+        rec: x.ext ? false : !!x.rec,
         ts: Number(x.ts) || Date.now(),
+        ...(x.ext
+          ? { ext: true, name: cleanStr(x.name, 40) || 'دخل إضافي', icon: cleanStr(x.icon, 8) || '⭐' }
+          : {}),
       };
     })
     .filter((i): i is Income => i !== null);
@@ -109,9 +122,15 @@ export function normalizeState(raw: any): AppState {
         icon: OB_ICONS.includes(x.icon) ? x.icon : '📌',
         paid,
         ts: Number(x.ts) || Date.now(),
+        ...(typeof x.fund === 'string' && x.fund ? { fund: x.fund } : {}),
       };
     })
     .filter((o): o is Obligation => o !== null);
+
+  const fundIds = new Set(out.incomes.filter(i => i.ext).map(i => i.id));
+  out.obligations.forEach(o => {
+    if (o.fund && !fundIds.has(o.fund)) delete o.fund;
+  });
 
   if (raw.budgets && typeof raw.budgets === 'object') {
     for (const c of catIds) {

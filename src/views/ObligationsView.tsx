@@ -30,8 +30,9 @@ export const ObligationsView: React.FC<ObligationsViewProps> = ({
   const t = todayStr();
   const items = obligationItems(viewedMk, state);
 
-  const total = items.reduce((acc, x) => acc + x.o.amt, 0);
-  const paid = items.filter(x => x.paidOn).reduce((acc, x) => acc + x.o.amt, 0);
+  const budgetItems = items.filter(x => !x.o.fund);
+  const total = budgetItems.reduce((acc, x) => acc + x.o.amt, 0);
+  const paid = budgetItems.filter(x => x.paidOn).reduce((acc, x) => acc + x.o.amt, 0);
   const left = total - paid;
   const pct = total > 0 ? Math.round((paid / total) * 100) : 0;
 
@@ -134,6 +135,11 @@ export const ObligationsView: React.FC<ObligationsViewProps> = ({
                       <b>{o.name}</b>
                       <span className="tags">
                         <span className={`tag ${tagClass}`}>{tagText}</span>
+                        {o.fund && (
+                          <span className="tag">
+                            {(state.incomes.find(i => i.id === o.fund)?.name) || 'دخل إضافي'} · خارج الميزانية
+                          </span>
+                        )}
                         {o.rec && <span className="tag">شهري</span>}
                         {o.rec && o.count && (
                           <span className="tag">
