@@ -1,6 +1,0 @@
-{
-  "name": "مصروفاتي - تتبّع المصروفات والميزانية",
-  "description": "تطبيق تتبّع الدخل والمصروفات والالتزامات الشهرية والميزانية بالدينار الكويتي مع دعم المزامنة السحابية عبر Supabase والجاهزية للنشر على Vercel.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
