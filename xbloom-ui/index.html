@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>xBloom Screen</title>
+<style>
+  :root{--bg:#14110f;--card:#221d19;--line:#352d27;--fg:#f3ece4;--mut:#9d9187;--acc:#d9904a;--ok:#6fbf73;--bad:#d9604a}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none}
+  html,body{margin:0;height:100%;background:#000;color:var(--fg);font-family:system-ui,"Segoe UI",Tahoma,sans-serif}
+  /* الشاشة: 480x320 (3.5 إنش). على الشاشة الحقيقية تملأ كامل الشاشة */
+  #screen{width:480px;height:320px;background:var(--bg);margin:0 auto;position:relative;overflow:hidden;display:flex;flex-direction:column}
+  @media (max-width:480px),(max-height:320px){#screen{width:100vw;height:100vh}}
+  header{height:36px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;border-bottom:1px solid var(--line);font-size:14px}
+  header .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--bad);margin-inline-end:6px}
+  header .dot.on{background:var(--ok)}
+  main{flex:1;overflow:hidden;position:relative}
+  .view{position:absolute;inset:0;padding:10px;display:none;flex-direction:column;gap:8px}
+  .view.active{display:flex}
+  .list{display:grid;grid-template-columns:1fr 1fr;gap:8px;overflow-y:auto}
+  .rcp{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;min-height:78px}
+  .rcp:active{border-color:var(--acc)}
+  .rcp b{font-size:16px}
+  .rcp span{color:var(--mut);font-size:12px}
+  .btn{background:var(--acc);color:#1a1209;border:0;border-radius:12px;font-size:16px;font-weight:700;padding:12px;width:100%}
+  .btn.ghost{background:var(--card);color:var(--fg);border:1px solid var(--line)}
+  .btn.stop{background:var(--bad);color:#fff}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .field{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px 10px;display:flex;align-items:center;justify-content:space-between}
+  .field label{color:var(--mut);font-size:13px}
+  .stepper{display:flex;align-items:center;gap:8px}
+  .stepper button{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg);font-size:22px}
+  .stepper output{min-width:64px;text-align:center;font-size:18px;font-weight:700}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:6px;overflow-y:auto}
+  .big{font-size:56px;font-weight:800;text-align:center;line-height:1}
+  .bar{height:12px;background:var(--card);border-radius:6px;overflow:hidden}
+  .bar i{display:block;height:100%;width:0;background:var(--acc);transition:width .3s}
+  .stats{display:flex;justify-content:space-around;color:var(--mut);font-size:14px}
+  .stats b{color:var(--fg);font-size:18px;display:block;text-align:center}
+  h2{margin:0;font-size:16px}
+  .top{display:flex;justify-content:space-between;align-items:center}
+  .small{padding:6px 12px;width:auto;font-size:14px}
+  input.name{background:var(--card);border:1px solid var(--line);color:var(--fg);border-radius:10px;padding:8px;font-size:16px;width:100%}
+</style>
+</head>
+<body>
+<div id="screen">
+  <header>
+    <div><span class="dot" id="dot"></span><span id="conn">غير متصل</span></div>
+    <div id="clock"></div>
+  </header>
+  <main>
+    <!-- الوصفات -->
+    <section class="view active" id="v-list">
+      <div class="top"><h2>الوصفات</h2><button class="btn ghost small" onclick="newRecipe()">+ جديدة</button></div>
+      <div class="list" id="list"></div>
+    </section>
+
+    <!-- تعديل الوصفة -->
+    <section class="view" id="v-edit">
+      <div class="top"><button class="btn ghost small" onclick="show('list')">رجوع</button><h2 id="e-title"></h2><button class="btn ghost small" onclick="delRecipe()">حذف</button></div>
+      <input class="name" id="e-name" oninput="cur.name=this.value">
+      <div class="grid2" id="e-fields"></div>
+      <div class="row">
+        <button class="btn ghost" onclick="saveRecipe()">حفظ</button>
+        <button class="btn" onclick="saveRecipe();startBrew()">ابدأ ▶</button>
+      </div>
+    </section>
+
+    <!-- التحضير -->
+    <section class="view" id="v-brew">
+      <div class="top"><h2 id="b-name"></h2><span id="b-state" style="color:var(--mut)"></span></div>
+      <div class="big" id="b-time">0:00</div>
+      <div class="bar"><i id="b-bar"></i></div>
+      <div class="stats">
+        <div><b id="b-water">0</b>مل</div>
+        <div><b id="b-temp">0°</b>الحرارة</div>
+        <div><b id="b-pour">0/0</b>الصبّة</div>
+      </div>
+      <div class="row">
+        <button class="btn ghost" id="b-pause" onclick="pauseBrew()">إيقاف مؤقت</button>
+        <button class="btn stop" onclick="cancelBrew()">إلغاء</button>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+/* ===== بيانات الوصفات (تُحفظ محلياً؛ لاحقاً تنقل لملف JSON على الباي) ===== */
+const FIELDS=[
+  {k:'dose',   l:'البن (غم)',     min:5, max:40,  step:0.5, u:'غ'},
+  {k:'water',  l:'الماء (مل)',    min:50,max:500, step:10,  u:'مل'},
+  {k:'temp',   l:'الحرارة (°م)',  min:70,max:100, step:1,   u:'°'},
+  {k:'grind',  l:'الطحن',         min:1, max:80,  step:1,   u:''},
+  {k:'pours',  l:'عدد الصبّات',   min:1, max:8,   step:1,   u:''},
+  {k:'bloom',  l:'التزهير (ث)',   min:0, max:60,  step:5,   u:'ث'},
+];
+const DEFAULTS=[
+  {name:'V60 خفيف',  dose:15,water:250,temp:93,grind:45,pours:3,bloom:30},
+  {name:'إسبريسو',   dose:18,water:36, temp:92,grind:10,pours:1,bloom:0},
+  {name:'أمريكانو',  dose:18,water:200,temp:92,grind:20,pours:2,bloom:10},
+  {name:'كولد برو',  dose:20,water:300,temp:85,grind:60,pours:4,bloom:30},
+];
+let recipes, cur, curIdx=-1;
+try{recipes=JSON.parse(localStorage.getItem('rcp'))}catch(e){}
+if(!Array.isArray(recipes)||!recipes.length) recipes=structuredClone(DEFAULTS);
+const persist=()=>{try{localStorage.setItem('rcp',JSON.stringify(recipes))}catch(e){}};
+
+const $=id=>document.getElementById(id);
+function show(v){document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));$('v-'+v).classList.add('active');if(v==='list')renderList()}
+
+function renderList(){
+  $('list').innerHTML=recipes.map((r,i)=>`<div class="rcp" onclick="openRecipe(${i})"><b>${r.name}</b><span>${r.dose}غ · ${r.water}مل · ${r.temp}°</span><span>${r.pours} صبّات</span></div>`).join('');
+}
+function openRecipe(i){
+  curIdx=i;cur=structuredClone(recipes[i]);
+  $('e-title').textContent='تعديل';$('e-name').value=cur.name;
+  $('e-fields').innerHTML=FIELDS.map(f=>`<div class="field"><label>${f.l}</label><div class="stepper"><button onclick="step('${f.k}',1)">+</button><output id="o-${f.k}">${cur[f.k]}</output><button onclick="step('${f.k}',-1)">−</button></div></div>`).join('');
+  show('edit');
+}
+function step(k,d){
+  const f=FIELDS.find(x=>x.k===k);
+  cur[k]=Math.min(f.max,Math.max(f.min,+(cur[k]+d*f.step).toFixed(1)));
+  $('o-'+k).textContent=cur[k];
+}
+function newRecipe(){recipes.push({name:'وصفة جديدة',dose:15,water:250,temp:93,grind:40,pours:3,bloom:30});persist();openRecipe(recipes.length-1)}
+function saveRecipe(){recipes[curIdx]=structuredClone(cur);persist();renderList()}
+function delRecipe(){if(recipes.length>1){recipes.splice(curIdx,1);persist()}show('list')}
+
+/* ===== التحضير (محاكاة. هنا لاحقاً نستبدلها بأوامر البلوتوث للماكينة) ===== */
+let t=0,total=0,timer=null,paused=false;
+function startBrew(){
+  const r=cur;total=r.bloom+r.pours*25;t=0;paused=false;
+  $('b-name').textContent=r.name;$('b-pause').textContent='إيقاف مؤقت';
+  $('b-temp').textContent=r.temp+'°';
+  show('brew');
+  // TODO(BLE): machine.send_recipe(r); machine.start()
+  clearInterval(timer);
+  timer=setInterval(()=>{if(paused)return;t++;tick(r);if(t>=total){clearInterval(timer);$('b-state').textContent='تم ✓'}},1000);
+  tick(r);
+}
+function tick(r){
+  const p=Math.min(1,t/total);
+  $('b-time').textContent=Math.floor(t/60)+':'+String(t%60).padStart(2,'0');
+  $('b-bar').style.width=(p*100)+'%';
+  $('b-water').textContent=Math.round(r.water*p);
+  $('b-pour').textContent=(t<r.bloom?0:Math.min(r.pours,Math.floor((t-r.bloom)/25)+1))+'/'+r.pours;
+  $('b-state').textContent=t<r.bloom?'تزهير':'صبّ';
+}
+function pauseBrew(){paused=!paused;$('b-pause').textContent=paused?'استئناف':'إيقاف مؤقت'; /* TODO(BLE): pause/resume */}
+function cancelBrew(){clearInterval(timer);/* TODO(BLE): cancel */show('list')}
+
+/* ===== حالة الاتصال (ثابتة الآن) ===== */
+function setConn(on){$('dot').classList.toggle('on',on);$('conn').textContent=on?'xBloom متصل':'غير متصل'}
+setConn(false);
+setInterval(()=>$('clock').textContent=new Date().toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}),1000);
+renderList();
+</script>
+</body>
+</html>
