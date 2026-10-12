@@ -1,15 +1,26 @@
 import React from 'react';
 
-interface ToastProps {
-  message: string | null;
+export interface ToastAction {
+  label: string;
+  onClick: () => void;
 }
 
-export const Toast: React.FC<ToastProps> = ({ message }) => {
+interface ToastProps {
+  message: string | null;
+  action?: ToastAction | null;
+}
+
+export const Toast: React.FC<ToastProps> = ({ message, action }) => {
   if (!message) return null;
 
   return (
     <div id="toast" className="toast" role="status" aria-live="polite">
-      {message}
+      <span>{message}</span>
+      {action && (
+        <button type="button" className="toast-act" onClick={action.onClick}>
+          {action.label}
+        </button>
+      )}
     </div>
   );
 };

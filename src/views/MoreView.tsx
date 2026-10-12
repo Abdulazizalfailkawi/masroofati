@@ -3,6 +3,7 @@ import { AppState, RouteName, AuthUser } from '../types.ts';
 import { amtField, parseAmount } from '../lib/money.ts';
 import { fmtDate, curMk } from '../lib/dates.ts';
 import { HeaderBand } from '../components/HeaderBand.tsx';
+import { CURRENT_VERSION, applyUpdate } from '../lib/update.ts';
 
 interface MoreViewProps {
   state: AppState;
@@ -52,7 +53,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
 
   return (
     <div>
-      <HeaderBand title="المزيد" viewedMk={curMk()} />
+      <HeaderBand title="المزيد" viewedMk={curMk()} showMore={false} />
 
       <div className="wrap stack" style={{ marginTop: 14 }}>
         {/* Income Shortcut */}
@@ -170,6 +171,32 @@ export const MoreView: React.FC<MoreViewProps> = ({
                 حفظ
               </button>
             </form>
+          </div>
+        </div>
+
+        {/* App update */}
+        <div className="group">
+          <div className="block">
+            <h3>تحديث التطبيق</h3>
+            <p>
+              نسخة{' '}
+              {new Date(parseInt(CURRENT_VERSION, 36)).toLocaleDateString('ar-KW', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })}
+              . إذا سوينا تعديل جديد يوصلك إشعار تلقائي، وتقدر تحدّث من هنا بأي وقت. بياناتك ما تتأثر.
+            </p>
+            <button
+              type="button"
+              className="btn primary block-btn"
+              onClick={() => {
+                onToast('جاري التحديث…');
+                applyUpdate();
+              }}
+            >
+              🔄 تحديث التطبيق الآن
+            </button>
           </div>
         </div>
 

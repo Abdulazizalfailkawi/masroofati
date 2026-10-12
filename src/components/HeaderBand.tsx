@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { MONTHS } from '../lib/constants.ts';
 import { curMk } from '../lib/dates.ts';
 import { RouteName } from '../types.ts';
+import { MoreNavContext } from '../lib/navContext.ts';
 
 interface HeaderBandProps {
   title: string;
@@ -15,6 +16,7 @@ interface HeaderBandProps {
   onNextMonth?: () => void;
   onCurMonth?: () => void;
   rightAction?: React.ReactNode;
+  showMore?: boolean;
 }
 
 export const HeaderBand: React.FC<HeaderBandProps> = ({
@@ -29,7 +31,10 @@ export const HeaderBand: React.FC<HeaderBandProps> = ({
   onNextMonth,
   onCurMonth,
   rightAction,
+  showMore,
 }) => {
+  const goMore = useContext(MoreNavContext);
+  const withMore = (showMore ?? !back) && goMore !== null;
   const [y, m] = viewedMk.split('-').map(Number);
   const isCur = viewedMk === curMk();
 
@@ -51,6 +56,15 @@ export const HeaderBand: React.FC<HeaderBandProps> = ({
           )}
           <h1>{title}</h1>
           {rightAction}
+          {withMore && (
+            <button type="button" className="iconbtn" onClick={() => goMore!()} aria-label="المزيد">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="5" cy="12" r="1.4" />
+                <circle cx="12" cy="12" r="1.4" />
+                <circle cx="19" cy="12" r="1.4" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {sub && <p className="sub">{sub}</p>}

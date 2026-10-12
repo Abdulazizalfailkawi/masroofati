@@ -7,8 +7,6 @@ interface FABProps {
 }
 
 const FAB_CONFIG: Partial<Record<RouteName, { action: string; label: string }>> = {
-  home: { action: 'add-expense', label: 'إضافة مصروف' },
-  exp: { action: 'add-expense', label: 'إضافة مصروف' },
   ob: { action: 'add-ob', label: 'إضافة التزام' },
   income: { action: 'add-inc', label: 'إضافة دخل' },
 };

@@ -8,6 +8,7 @@ import {
   Fund,
   FundItem,
   CategoryId,
+  PaymentId,
   AuthUser,
 } from './types.ts';
 import {
@@ -42,7 +43,10 @@ import { AdminView } from './views/AdminView.tsx';
 // Components & Sheets
 import { TabsNav } from './components/TabsNav.tsx';
 import { FAB } from './components/FAB.tsx';
-import { Toast } from './components/Toast.tsx';
+import { Toast, ToastAction } from './components/Toast.tsx';
+import { UpdateBanner } from './components/UpdateBanner.tsx';
+import { QuickAddSheet } from './components/sheets/QuickAddSheet.tsx';
+import { MoreNavContext } from './lib/navContext.ts';
 import { ConfirmDialog } from './components/ConfirmDialog.tsx';
 import { ExpenseSheet } from './components/sheets/ExpenseSheet.tsx';
 import { ObligationSheet } from './components/sheets/ObligationSheet.tsx';
@@ -112,13 +116,21 @@ export default function App() {
   });
 
   const toastTimerRef = useRef<number | null>(null);
+  const [toastAction, setToastAction] = useState<ToastAction | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  const showToast = (msg: string) => {
+  // Always points at the latest state, for callbacks (like undo) that outlive a render
+  const stateRef = useRef(appState);
+  stateRef.current = appState;
+
+  const showToast = (msg: string, action?: ToastAction, ms = 2800) => {
     setToastMessage(msg);
+    setToastAction(action || null);
     if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => {
       setToastMessage(null);
-    }, 2800);
+      setToastAction(null);
+    }, action ? Math.max(ms, 5000) : ms);
   };
 
   // Hash routing
@@ -238,6 +250,35 @@ export default function App() {
     const updated = { ...appState, expenses: updatedExpenses };
     updateStateAndPersist(updated);
     showToast(data.id ? 'تم تعديل المصروف' : 'تم حفظ المصروف');
+  };
+
+  // Fast path: amount + category in one tap, saved as today's expense (with undo)
+  const handleQuickAdd = (data: { amt: number; cat: CategoryId; pay: PaymentId }) => {
+    const created: Expense = {
+      id: uid(),
+      amt: data.amt,
+      cat: data.cat,
+      date: todayStr(),
+      note: '',
+      pay: data.pay,
+      ts: Date.now(),
+    };
+    const cur = stateRef.current;
+    updateStateAndPersist({ ...cur, expenses: [...cur.expenses, created] });
+
+    const catName = CATS.find(c => c.id === data.cat)?.name || '';
+    showToast(`تم حفظ ${formatMoney(data.amt)} د.ك · ${catName}`, {
+      label: 'تراجع',
+      onClick: () => {
+        const latest = stateRef.current;
+        updateStateAndPersist({
+          ...latest,
+          expenses: latest.expenses.filter(e => e.id !== created.id),
+        });
+        setToastMessage(null);
+        setToastAction(null);
+      },
+    });
   };
 
   const handleDeleteExpense = (id: string) => {
@@ -632,6 +673,7 @@ export default function App() {
   const handleCurMonth = () => setViewedMk(curMk());
 
   return (
+    <MoreNavContext.Provider value={() => navigateTo('more')}>
     <div id="view" tabIndex={-1}>
       {/* Active View */}
       {currentRoute === 'home' && (
@@ -780,11 +822,27 @@ export default function App() {
 
       {/* Bottom Tabs Navigation */}
       {currentRoute !== 'admin' && (
-        <TabsNav currentRoute={currentRoute} onNavigate={navigateTo} />
+        <TabsNav
+          currentRoute={currentRoute}
+          onNavigate={navigateTo}
+          onQuickAdd={() => setQuickAddOpen(true)}
+        />
       )}
 
+      <QuickAddSheet
+        isOpen={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onAdd={handleQuickAdd}
+        onOpenFull={() => {
+          setQuickAddOpen(false);
+          handleTriggerAction('add-expense');
+        }}
+      />
+
+      <UpdateBanner />
+
       {/* Toast Notification */}
-      <Toast message={toastMessage} />
+      <Toast message={toastMessage} action={toastAction} />
 
       {/* Confirmation Dialog */}
       <ConfirmDialog
@@ -869,5 +927,6 @@ export default function App() {
         }}
       />
     </div>
+    </MoreNavContext.Provider>
   );
 }

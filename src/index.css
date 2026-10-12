@@ -249,6 +249,35 @@ small { font-size: .8em; }
 .fab svg { width: 22px; height: 22px; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; fill: none; }
 .fab:active { transform: scale(.97); }
 
+.plus-slot { display: grid; place-items: center; }
+.tabs .plus { width: 58px; height: 58px; min-height: 0; margin-top: -26px; border-radius: 50%; background: var(--pri-fill); color: var(--on-pri); border: 5px solid var(--bg); box-shadow: 0 0 0 1px var(--line), 0 8px 18px -6px rgba(37, 99, 235, .7); display: grid; place-items: center; }
+.tabs .plus svg { width: 26px; height: 26px; stroke-width: 2.6; }
+.tabs .plus:active { transform: scale(.94); }
+
+.updatebar { position: fixed; z-index: 90; inset-inline: 12px; top: calc(env(safe-area-inset-top) + 10px); max-width: 536px; margin-inline: auto; display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1px solid var(--pri); border-radius: 16px; padding: 10px 12px; box-shadow: 0 12px 28px -10px rgba(0, 0, 0, .8); animation: down .22s ease-out; }
+.updatebar .t { flex: 1; display: grid; min-width: 0; }
+.updatebar .t small { color: var(--muted); font-size: 12px; }
+.updatebar .btn { min-height: 40px; padding: 0 16px; font-size: 15px; }
+.updatebar .x { width: 32px; height: 32px; font-size: 20px; flex: none; }
+@keyframes down { from { transform: translateY(-24px); opacity: .6; } to { transform: none; opacity: 1; } }
+
+.quick .sheet-b { gap: 12px; }
+.qamt { display: flex; align-items: baseline; justify-content: center; gap: 8px; min-height: 64px; direction: ltr; font-weight: 800; }
+.qamt .num { font-size: 52px; line-height: 1.1; }
+.qamt .cu { font-size: 18px; }
+.keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; direction: ltr; }
+.key { min-height: 52px; border-radius: 14px; background: var(--inset); border: 1px solid var(--line); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.key:active { background: var(--pri-soft); border-color: var(--pri); }
+.key.del { color: var(--muted); font-size: 22px; }
+.catkey { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 64px; padding: 6px 4px; border-radius: 14px; background: var(--inset); border: 1px solid var(--line); font-size: 12px; font-weight: 600; line-height: 1.25; text-align: center; }
+.catkey em { font-style: normal; font-size: 22px; line-height: 1; }
+.catkey:active { background: var(--pri-fill); border-color: var(--pri-fill); color: var(--on-pri); }
+.qfoot { display: grid; gap: 4px; padding-bottom: calc(env(safe-area-inset-bottom) + 14px); }
+.qfoot .linkbtn { justify-self: center; }
+
+.toast { display: flex; align-items: center; justify-content: center; gap: 14px; }
+.toast-act { color: var(--bg); background: rgba(0, 0, 0, .12); border-radius: 10px; padding: 4px 12px; min-height: 32px; font-weight: 800; text-decoration: underline; }
+
 .tabs { position: fixed; inset-inline: 0; bottom: 0; z-index: 30; display: grid; grid-template-columns: repeat(5, 1fr); background: var(--bg); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom); }
 .tabs button { min-height: var(--nav-h); display: grid; place-items: center; align-content: center; gap: 2px; color: var(--muted); font-size: 12px; font-weight: 600; position: relative; }
 .tabs svg { width: 25px; height: 25px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }

@@ -4,11 +4,11 @@ import { RouteName } from '../types.ts';
 interface TabsNavProps {
   currentRoute: RouteName;
   onNavigate: (route: RouteName) => void;
+  onQuickAdd: () => void;
 }
 
-export const TabsNav: React.FC<TabsNavProps> = ({ currentRoute, onNavigate }) => {
-  const activeTab =
-    currentRoute === 'income' ? 'more' : currentRoute === 'funds' ? 'budget' : currentRoute;
+export const TabsNav: React.FC<TabsNavProps> = ({ currentRoute, onNavigate, onQuickAdd }) => {
+  const activeTab = currentRoute === 'funds' ? 'budget' : currentRoute;
 
   return (
     <nav className="tabs" aria-label="التنقل الرئيسي">
@@ -36,6 +36,14 @@ export const TabsNav: React.FC<TabsNavProps> = ({ currentRoute, onNavigate }) =>
         <span>المصروفات</span>
       </button>
 
+      <div className="plus-slot">
+        <button type="button" className="plus" onClick={onQuickAdd} aria-label="إضافة مصروف">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      </div>
+
       <button
         type="button"
         data-tab="ob"
@@ -59,20 +67,6 @@ export const TabsNav: React.FC<TabsNavProps> = ({ currentRoute, onNavigate }) =>
           <path d="M12 3v9l6.4 6.4" />
         </svg>
         <span>الميزانية</span>
-      </button>
-
-      <button
-        type="button"
-        data-tab="more"
-        aria-current={activeTab === 'more' ? 'page' : undefined}
-        onClick={() => onNavigate('more')}
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="5" cy="12" r="1.4" />
-          <circle cx="12" cy="12" r="1.4" />
-          <circle cx="19" cy="12" r="1.4" />
-        </svg>
-        <span>المزيد</span>
       </button>
     </nav>
   );
