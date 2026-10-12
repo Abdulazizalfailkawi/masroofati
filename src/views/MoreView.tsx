@@ -18,7 +18,10 @@ interface MoreViewProps {
   onOpenAuth: () => void;
   onOpenInstallGuide: () => void;
   onOpenWelcome?: () => void;
+  onOpenSms: () => void;
 }
+
+const SHOW_BACKUP_KEY = 'masroofati:show_backup';
 
 export const MoreView: React.FC<MoreViewProps> = ({
   state,
@@ -33,8 +36,24 @@ export const MoreView: React.FC<MoreViewProps> = ({
   onOpenAuth,
   onOpenInstallGuide,
   onOpenWelcome,
+  onOpenSms,
 }) => {
   const [targetInput, setTargetInput] = useState(amtField(state.settings.saveTarget));
+
+  // The admin can hide the backup section; the choice is remembered on this device.
+  const [showBackup, setShowBackup] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(SHOW_BACKUP_KEY) !== '0';
+    } catch (_) {
+      return true;
+    }
+  });
+  const toggleBackup = (on: boolean) => {
+    setShowBackup(on);
+    try {
+      localStorage.setItem(SHOW_BACKUP_KEY, on ? '1' : '0');
+    } catch (_) {}
+  };
 
   const handleTargetSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -200,7 +219,38 @@ export const MoreView: React.FC<MoreViewProps> = ({
           </div>
         </div>
 
-        {/* Backup and Export */}
+        {/* Bank SMS link */}
+        <div className="group">
+          <div className="block">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 22 }}>📩</span>
+              <h3 style={{ margin: 0 }}>الربط مع رسائل البنك</h3>
+            </div>
+            <p>
+              رسائل الخصم والإيداع من البنك تنضاف لمصروفاتك ودخلك تلقائياً، بدل ما تكتبها بيدك.
+            </p>
+            <button type="button" className="btn primary block-btn" onClick={onOpenSms}>
+              إعداد الربط
+            </button>
+          </div>
+        </div>
+
+        {/* Backup and Export: admin only, with an option to hide it */}
+        {currentUser?.isAdmin && (
+          <div className="group">
+            <label className="swrow" style={{ padding: '0 16px' }}>
+              <span>إظهار النسخ الاحتياطي والتصدير</span>
+              <input
+                type="checkbox"
+                role="switch"
+                checked={showBackup}
+                onChange={e => toggleBackup(e.target.checked)}
+              />
+            </label>
+          </div>
+        )}
+
+        {currentUser?.isAdmin && showBackup && (
         <div className="group">
           <div className="block">
             <h3>النسخ الاحتياطي والتصدير</h3>
@@ -234,6 +284,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
             </button>
           </div>
         </div>
+        )}
 
         {/* Danger Zone */}
         <div className="group">

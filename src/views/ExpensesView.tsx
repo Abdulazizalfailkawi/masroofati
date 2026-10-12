@@ -190,6 +190,7 @@ export const ExpensesView: React.FC<ExpensesViewProps> = ({ state, onEditExpense
                         <b>{e.note || c.name}</b>
                         <small>
                           {c.name} · {p.name}
+                          {e.smsId ? ' · 📩 من الرسالة' : ''}
                         </small>
                       </span>
                       <span className="ramt">

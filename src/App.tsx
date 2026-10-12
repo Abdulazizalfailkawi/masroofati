@@ -47,6 +47,8 @@ import { Toast, ToastAction } from './components/Toast.tsx';
 import { UpdateBanner } from './components/UpdateBanner.tsx';
 import { QuickAddSheet } from './components/sheets/QuickAddSheet.tsx';
 import { MoreNavContext } from './lib/navContext.ts';
+import { SmsSheet } from './components/sheets/SmsSheet.tsx';
+import { applyInbox, fetchNewInbox, markInboxImported } from './lib/inbox.ts';
 import { ConfirmDialog } from './components/ConfirmDialog.tsx';
 import { ExpenseSheet } from './components/sheets/ExpenseSheet.tsx';
 import { ObligationSheet } from './components/sheets/ObligationSheet.tsx';
@@ -119,9 +121,13 @@ export default function App() {
   const [toastAction, setToastAction] = useState<ToastAction | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
 
-  // Always points at the latest state, for callbacks (like undo) that outlive a render
+  // Always point at the latest state / user, for callbacks (undo, background import) that outlive a render
   const stateRef = useRef(appState);
   stateRef.current = appState;
+  const userRef = useRef(currentUser);
+  userRef.current = currentUser;
+  const [cloudReady, setCloudReady] = useState(false);
+  const [smsSheetOpen, setSmsSheetOpen] = useState(false);
 
   const showToast = (msg: string, action?: ToastAction, ms = 2800) => {
     setToastMessage(msg);
@@ -176,7 +182,45 @@ export default function App() {
     ) {
       pushStateToSupabase(appState, user);
     }
+    // From here on the local state matches the cloud, so it is safe to import new bank SMS
+    setCloudReady(true);
   };
+
+  // Bank SMS that the sms-ingest function stored for this user -> expenses / incomes
+  const importingRef = useRef(false);
+  const importSms = async () => {
+    if (importingRef.current || !userRef.current) return;
+    importingRef.current = true;
+    try {
+      const rows = await fetchNewInbox(stateRef.current);
+      if (rows.length === 0) return;
+      const { state: next, added } = applyInbox(stateRef.current, rows);
+      if (added > 0) {
+        updateStateAndPersist(next);
+        showToast(`تمت إضافة ${added} ${added === 1 ? 'عملية' : 'عمليات'} من رسائل البنك 📩`, undefined, 4500);
+      }
+      await markInboxImported(rows.map(r => r.id), stateRef.current);
+    } finally {
+      importingRef.current = false;
+    }
+  };
+  const importSmsRef = useRef(importSms);
+  importSmsRef.current = importSms;
+
+  useEffect(() => {
+    if (!cloudReady || !currentUser) return;
+    const run = () => importSmsRef.current();
+    run();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') run();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    const timer = window.setInterval(run, 90 * 1000);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible);
+      window.clearInterval(timer);
+    };
+  }, [cloudReady, currentUser?.id]);
 
   // Restore the Supabase session on startup (the only source of truth for login)
   useEffect(() => {
@@ -197,6 +241,7 @@ export default function App() {
 
   const handleLogout = async () => {
     setCurrentUser(null);
+    setCloudReady(false);
     // The data lives in the user's cloud account; don't leave it on a shared device
     const fresh = defaultState();
     setAppState(fresh);
@@ -793,6 +838,7 @@ export default function App() {
           onOpenAuth={() => setAuthSheetOpen(true)}
           onOpenInstallGuide={() => setInstallGuideSheetOpen(true)}
           onOpenWelcome={() => setWelcomeModalOpen(true)}
+          onOpenSms={() => setSmsSheetOpen(true)}
         />
       )}
 
@@ -886,6 +932,14 @@ export default function App() {
         isOpen={budgetSheetOpen}
         onClose={() => setBudgetSheetOpen(false)}
         onSave={handleSaveBudget}
+      />
+
+      <SmsSheet
+        isOpen={smsSheetOpen}
+        onClose={() => setSmsSheetOpen(false)}
+        state={appState}
+        currentUser={currentUser}
+        onToast={showToast}
       />
 
       <FundSheet

@@ -86,7 +86,12 @@ export function statusOf(s: MonthSummary): { c: 'good' | 'warn' | 'bad'; t: stri
   return { c: 'good', t: 'وضعك زين' };
 }
 
-export function buildAlerts(state: AppState, viewedMk: string, loadWarn: string | null): AlertItem[] {
+export function buildAlerts(
+  state: AppState,
+  viewedMk: string,
+  loadWarn: string | null,
+  showBackupHint = false
+): AlertItem[] {
   const out: AlertItem[] = [];
   const t = todayStr();
   const current = curMk();
@@ -194,7 +199,8 @@ export function buildAlerts(state: AppState, viewedMk: string, loadWarn: string 
 
   const hasData = state.expenses.length || state.incomes.length || state.obligations.length;
   const lb = state.settings.lastBackup;
-  if (hasData && (!lb || dayDiff(lb, t) > 14)) {
+  // Backups are an admin-only tool, so only nudge the admin about them.
+  if (showBackupHint && hasData && (!lb || dayDiff(lb, t) > 14)) {
     out.push({
       lv: 'info',
       ic: '💾',

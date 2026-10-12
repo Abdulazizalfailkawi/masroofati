@@ -83,6 +83,8 @@ export const IncomeView: React.FC<IncomeViewProps> = ({
                     <b>{sr.name}</b>
                     <span className="tags">
                       {i.rec && <span className="tag">شهري</span>}
+                      {i.smsId && <span className="tag">📩 من الرسالة</span>}
+                      {i.note && <span className="tag">{i.note}</span>}
                     </span>
                   </span>
                   <span className="ramt">

@@ -70,6 +70,7 @@ export function normalizeState(raw: any): AppState {
         note: cleanStr(x.note, 80),
         pay: (payIds.includes(x.pay) ? x.pay : 'cash') as PaymentId,
         ts: Number(x.ts) || Date.now(),
+        ...(cleanStr(x.smsId, 40) ? { smsId: cleanStr(x.smsId, 40) } : {}),
       };
     })
     .filter((e): e is Expense => e !== null);
@@ -84,6 +85,8 @@ export function normalizeState(raw: any): AppState {
         date: x.date,
         rec: !!x.rec,
         ts: Number(x.ts) || Date.now(),
+        ...(cleanStr(x.note, 80) ? { note: cleanStr(x.note, 80) } : {}),
+        ...(cleanStr(x.smsId, 40) ? { smsId: cleanStr(x.smsId, 40) } : {}),
       };
     })
     .filter((i): i is Income => i !== null);

@@ -30,6 +30,7 @@ export interface Expense {
   note: string;
   pay: PaymentId;
   ts: number;
+  smsId?: string; // set when it was added automatically from a bank SMS
 }
 
 export interface Income {
@@ -39,6 +40,8 @@ export interface Income {
   date: string; // YYYY-MM-DD
   rec: boolean; // recurring monthly
   ts: number;
+  note?: string; // e.g. who the transfer came from
+  smsId?: string; // set when it was added automatically from a bank SMS
 }
 
 export interface Obligation {
