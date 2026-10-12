@@ -2,7 +2,7 @@ export type CategoryId = 'food' | 'transport' | 'shopping' | 'coffee' | 'fun' | 
 export type PaymentId = 'cash' | 'knet' | 'card' | 'transfer' | 'other';
 export type IncomeSourceId = 'salary' | 'allowance' | 'extra' | 'other';
 export type ThemeMode = 'auto' | 'light' | 'dark';
-export type RouteName = 'home' | 'exp' | 'ob' | 'budget' | 'more' | 'income' | 'admin';
+export type RouteName = 'home' | 'exp' | 'ob' | 'budget' | 'funds' | 'more' | 'income' | 'admin';
 export type PeriodType = 'day' | 'week' | 'month' | 'all' | 'range';
 
 export interface Category {
@@ -53,6 +53,25 @@ export interface Obligation {
   ts: number;
 }
 
+// A special budget that lives outside the monthly income (e.g. a fishing trip).
+// Its purchases never count toward the monthly expenses / remaining balance.
+export interface FundItem {
+  id: string;
+  name: string;
+  amt: number; // In fils
+  date: string; // YYYY-MM-DD
+  ts: number;
+}
+
+export interface Fund {
+  id: string;
+  name: string;
+  icon: string;
+  amt: number; // Total budget, in fils
+  items: FundItem[];
+  ts: number;
+}
+
 export interface AppSettings {
   theme: ThemeMode;
   saveTarget: number; // In fils
@@ -69,6 +88,7 @@ export interface AppState {
   incomes: Income[];
   obligations: Obligation[];
   budgets: Partial<Record<CategoryId, number>>;
+  funds: Fund[];
 }
 
 export interface ObligationItem {

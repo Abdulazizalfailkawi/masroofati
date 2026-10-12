@@ -3,6 +3,7 @@ import { Obligation } from '../../types.ts';
 import { OB_ICONS, OB_GUESS } from '../../lib/constants.ts';
 import { amtField, parseAmount, normDigits } from '../../lib/money.ts';
 import { isDate, todayStr } from '../../lib/dates.ts';
+import { EmojiPicker } from '../EmojiPicker.tsx';
 
 interface ObligationSheetProps {
   obligation: Obligation | null;
@@ -191,25 +192,12 @@ export const ObligationSheet: React.FC<ObligationSheetProps> = ({
             </label>
           )}
 
-          <div className="fld">
-            <span>الأيقونة</span>
-            <div className="chips">
-              {OB_ICONS.map(ic => (
-                <label key={ic} className="opt">
-                  <input
-                    type="radio"
-                    name="icon"
-                    value={ic}
-                    checked={icon === ic}
-                    onChange={() => handleIconChange(ic)}
-                  />
-                  <span>
-                    <em aria-hidden="true">{ic}</em>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </div>
+          <EmojiPicker
+            name="icon"
+            value={icon}
+            presets={OB_ICONS}
+            onChange={handleIconChange}
+          />
 
           {err && (
             <p className="err" role="alert">

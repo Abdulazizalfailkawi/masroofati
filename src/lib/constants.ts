@@ -30,6 +30,8 @@ export const SOURCES: IncomeSource[] = [
 
 export const OB_ICONS: string[] = ['🏠', '📱', '🌐', '🚗', '💳', '💡', '🎓', '🛡️', '📌'];
 
+export const FUND_ICONS: string[] = ['🎣', '✈️', '🏕️', '🎁', '🏠', '🚗', '🎮', '🛍️', '🎓', '💍', '🏋️', '🎯'];
+
 export const OB_GUESS: [RegExp, string][] = [
   [/إيجار|ايجار|سكن|بيت/, '🏠'],
   [/هاتف|جوال|موبايل|خط\b|اتصال|زين|ooredoo|stc/i, '📱'],

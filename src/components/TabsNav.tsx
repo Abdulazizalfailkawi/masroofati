@@ -7,7 +7,8 @@ interface TabsNavProps {
 }
 
 export const TabsNav: React.FC<TabsNavProps> = ({ currentRoute, onNavigate }) => {
-  const activeTab = currentRoute === 'income' ? 'more' : currentRoute;
+  const activeTab =
+    currentRoute === 'income' ? 'more' : currentRoute === 'funds' ? 'budget' : currentRoute;
 
   return (
     <nav className="tabs" aria-label="التنقل الرئيسي">

@@ -1,6 +1,7 @@
-import { AppState, Expense, Income, Obligation, CategoryId, PaymentId, IncomeSourceId } from '../types.ts';
-import { STORAGE_KEY, CATS, PAYS, SOURCES, OB_ICONS } from './constants.ts';
+import { AppState, Expense, Income, Obligation, Fund, FundItem, CategoryId, PaymentId, IncomeSourceId } from '../types.ts';
+import { STORAGE_KEY, CATS, PAYS, SOURCES } from './constants.ts';
 import { isDate } from './dates.ts';
+import { firstEmoji } from './emoji.ts';
 
 export const uid = (): string =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -19,6 +20,7 @@ export const defaultState = (): AppState => ({
   incomes: [],
   obligations: [],
   budgets: {},
+  funds: [],
 });
 
 const cleanAmt = (v: unknown): number => {
@@ -106,12 +108,39 @@ export function normalizeState(raw: any): AppState {
         date: x.date,
         rec,
         count: rec && Number.isInteger(c) && c >= 1 && c <= 600 ? c : null,
-        icon: OB_ICONS.includes(x.icon) ? x.icon : '📌',
+        icon: firstEmoji(x.icon) || '📌',
         paid,
         ts: Number(x.ts) || Date.now(),
       };
     })
     .filter((o): o is Obligation => o !== null);
+
+  out.funds = arr(raw.funds)
+    .map((x: any): Fund | null => {
+      const name = cleanStr(x && x.name, 40);
+      if (!x || !name || !cleanAmt(x.amt)) return null;
+      const items = arr(x.items)
+        .map((it: any): FundItem | null => {
+          if (!it || !isDate(it.date) || !cleanAmt(it.amt)) return null;
+          return {
+            id: genId(it),
+            name: cleanStr(it.name, 60),
+            amt: cleanAmt(it.amt),
+            date: it.date,
+            ts: Number(it.ts) || Date.now(),
+          };
+        })
+        .filter((i): i is FundItem => i !== null);
+      return {
+        id: genId(x),
+        name,
+        icon: firstEmoji(x.icon) || '🎯',
+        amt: cleanAmt(x.amt),
+        items,
+        ts: Number(x.ts) || Date.now(),
+      };
+    })
+    .filter((f): f is Fund => f !== null);
 
   if (raw.budgets && typeof raw.budgets === 'object') {
     for (const c of catIds) {

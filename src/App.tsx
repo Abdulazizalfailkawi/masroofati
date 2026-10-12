@@ -5,6 +5,8 @@ import {
   Expense,
   Obligation,
   Income,
+  Fund,
+  FundItem,
   CategoryId,
   AuthUser,
 } from './types.ts';
@@ -32,6 +34,7 @@ import { HomeView } from './views/HomeView.tsx';
 import { ExpensesView } from './views/ExpensesView.tsx';
 import { ObligationsView } from './views/ObligationsView.tsx';
 import { BudgetView } from './views/BudgetView.tsx';
+import { FundsView } from './views/FundsView.tsx';
 import { IncomeView } from './views/IncomeView.tsx';
 import { MoreView } from './views/MoreView.tsx';
 import { AdminView } from './views/AdminView.tsx';
@@ -45,11 +48,13 @@ import { ExpenseSheet } from './components/sheets/ExpenseSheet.tsx';
 import { ObligationSheet } from './components/sheets/ObligationSheet.tsx';
 import { IncomeSheet } from './components/sheets/IncomeSheet.tsx';
 import { BudgetSheet } from './components/sheets/BudgetSheet.tsx';
+import { FundSheet } from './components/sheets/FundSheet.tsx';
+import { FundItemSheet } from './components/sheets/FundItemSheet.tsx';
 import { AuthSheet } from './components/sheets/AuthSheet.tsx';
 import { InstallGuideSheet } from './components/sheets/InstallGuideSheet.tsx';
 import { WelcomeModal } from './components/sheets/WelcomeModal.tsx';
 
-const VALID_ROUTES: RouteName[] = ['home', 'exp', 'ob', 'budget', 'more', 'income', 'admin'];
+const VALID_ROUTES: RouteName[] = ['home', 'exp', 'ob', 'budget', 'funds', 'more', 'income', 'admin'];
 
 function getRouteFromHash(): RouteName {
   const hash = window.location.hash.replace(/^#\/?/, '');
@@ -79,6 +84,13 @@ export default function App() {
 
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
   const [selectedBudgetCat, setSelectedBudgetCat] = useState<CategoryId | null>(null);
+
+  // Special budgets (funds) kept outside the monthly income
+  const [selectedFundId, setSelectedFundId] = useState<string | null>(null);
+  const [fundSheetOpen, setFundSheetOpen] = useState(false);
+  const [editingFund, setEditingFund] = useState<Fund | null>(null);
+  const [fundItemSheetOpen, setFundItemSheetOpen] = useState(false);
+  const [editingFundItem, setEditingFundItem] = useState<FundItem | null>(null);
 
   const [installGuideSheetOpen, setInstallGuideSheetOpen] = useState(false);
   const [welcomeModalOpen, setWelcomeModalOpen] = useState<boolean>(() => {
@@ -414,6 +426,81 @@ export default function App() {
     showToast('تم حفظ الميزانية');
   };
 
+  // Special Budget (Fund) Handlers
+  const handleSaveFund = (data: { id?: string; name: string; amt: number; icon: string }) => {
+    let funds = [...appState.funds];
+    if (data.id) {
+      funds = funds.map(f =>
+        f.id === data.id ? { ...f, name: data.name, amt: data.amt, icon: data.icon } : f
+      );
+    } else {
+      const created: Fund = {
+        id: uid(),
+        name: data.name,
+        amt: data.amt,
+        icon: data.icon,
+        items: [],
+        ts: Date.now(),
+      };
+      funds.push(created);
+      setSelectedFundId(created.id);
+    }
+    updateStateAndPersist({ ...appState, funds });
+    showToast(data.id ? 'تم تعديل الميزانية' : 'تم إنشاء الميزانية');
+  };
+
+  const handleDeleteFund = (id: string) => {
+    setDialogConfig({
+      title: 'حذف الميزانية؟',
+      message: 'سيتم حذف الميزانية مع كل مشترياتها. لا يمكن التراجع.',
+      okText: 'احذف',
+      isDanger: true,
+      onConfirm: () => {
+        updateStateAndPersist({
+          ...appState,
+          funds: appState.funds.filter(f => f.id !== id),
+        });
+        setFundSheetOpen(false);
+        setSelectedFundId(null);
+        setDialogOpen(false);
+        showToast('تم حذف الميزانية');
+      },
+    });
+    setDialogOpen(true);
+  };
+
+  const handleSaveFundItem = (data: { id?: string; name: string; amt: number; date: string }) => {
+    if (!selectedFundId) return;
+    const funds = appState.funds.map(f => {
+      if (f.id !== selectedFundId) return f;
+      const items = data.id
+        ? f.items.map(it => (it.id === data.id ? { ...it, ...data } : it))
+        : [...f.items, { id: uid(), name: data.name, amt: data.amt, date: data.date, ts: Date.now() }];
+      return { ...f, items };
+    });
+    updateStateAndPersist({ ...appState, funds });
+    showToast(data.id ? 'تم تعديل المشترى' : 'تم حفظ المشترى');
+  };
+
+  const handleDeleteFundItem = (itemId: string) => {
+    setDialogConfig({
+      title: 'حذف المشترى؟',
+      message: 'لا يمكن التراجع عن الحذف بعد تأكيده.',
+      okText: 'احذف',
+      isDanger: true,
+      onConfirm: () => {
+        const funds = appState.funds.map(f =>
+          f.id === selectedFundId ? { ...f, items: f.items.filter(it => it.id !== itemId) } : f
+        );
+        updateStateAndPersist({ ...appState, funds });
+        setFundItemSheetOpen(false);
+        setDialogOpen(false);
+        showToast('تم حذف المشترى');
+      },
+    });
+    setDialogOpen(true);
+  };
+
   // Backup & CSV Handlers
   const handleExportBackup = async () => {
     const backupJson = JSON.stringify(
@@ -481,7 +568,7 @@ export default function App() {
 
           setDialogConfig({
             title: 'استيراد النسخة الاحتياطية؟',
-            message: `سيتم استبدال البيانات الحالية بـ ${nextState.expenses.length} مصروف و ${nextState.incomes.length} دخل و ${nextState.obligations.length} التزام.`,
+            message: `سيتم استبدال البيانات الحالية بـ ${nextState.expenses.length} مصروف و ${nextState.incomes.length} دخل و ${nextState.obligations.length} التزام و ${nextState.funds.length} ميزانية خاصة.`,
             okText: 'استبدل',
             isDanger: true,
             onConfirm: () => {
@@ -536,7 +623,7 @@ export default function App() {
   const handleWipeData = () => {
     setDialogConfig({
       title: 'مسح كل البيانات؟',
-      message: 'ستُحذف جميع المصروفات والدخل والالتزامات والميزانيات من هذا الجهاز. يرجى أخذ نسخة احتياطية أولاً.',
+      message: 'ستُحذف جميع المصروفات والدخل والالتزامات والميزانيات (بما فيها الميزانيات الخاصة) من هذا الجهاز. يرجى أخذ نسخة احتياطية أولاً.',
       okText: 'امسح كل شيء',
       isDanger: true,
       onConfirm: () => {
@@ -608,6 +695,35 @@ export default function App() {
           onSetBudget={catId => {
             setSelectedBudgetCat(catId);
             setBudgetSheetOpen(true);
+          }}
+          onOpenFunds={() => {
+            setSelectedFundId(null);
+            navigateTo('funds');
+          }}
+        />
+      )}
+
+      {currentRoute === 'funds' && (
+        <FundsView
+          state={appState}
+          selectedFundId={selectedFundId}
+          onSelectFund={setSelectedFundId}
+          onNavigate={navigateTo}
+          onAddFund={() => {
+            setEditingFund(null);
+            setFundSheetOpen(true);
+          }}
+          onEditFund={fund => {
+            setEditingFund(fund);
+            setFundSheetOpen(true);
+          }}
+          onAddItem={() => {
+            setEditingFundItem(null);
+            setFundItemSheetOpen(true);
+          }}
+          onEditItem={(_fundId, item) => {
+            setEditingFundItem(item);
+            setFundItemSheetOpen(true);
           }}
         />
       )}
@@ -718,6 +834,23 @@ export default function App() {
         isOpen={budgetSheetOpen}
         onClose={() => setBudgetSheetOpen(false)}
         onSave={handleSaveBudget}
+      />
+
+      <FundSheet
+        fund={editingFund}
+        isOpen={fundSheetOpen}
+        onClose={() => setFundSheetOpen(false)}
+        onSave={handleSaveFund}
+        onDelete={handleDeleteFund}
+      />
+
+      <FundItemSheet
+        item={editingFundItem}
+        fundName={appState.funds.find(f => f.id === selectedFundId)?.name || ''}
+        isOpen={fundItemSheetOpen}
+        onClose={() => setFundItemSheetOpen(false)}
+        onSave={handleSaveFundItem}
+        onDelete={handleDeleteFundItem}
       />
 
       <AuthSheet

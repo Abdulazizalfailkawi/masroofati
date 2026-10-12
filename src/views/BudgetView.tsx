@@ -12,6 +12,7 @@ interface BudgetViewProps {
   onNextMonth: () => void;
   onCurMonth: () => void;
   onSetBudget: (catId: CategoryId) => void;
+  onOpenFunds: () => void;
 }
 
 export const BudgetView: React.FC<BudgetViewProps> = ({
@@ -21,8 +22,12 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   onNextMonth,
   onCurMonth,
   onSetBudget,
+  onOpenFunds,
 }) => {
   const s = summary(viewedMk, state);
+  const funds = state.funds || [];
+  const fundsSpent = funds.reduce((a, f) => a + f.items.reduce((x, it) => x + it.amt, 0), 0);
+  const fundsTotal = funds.reduce((a, f) => a + f.amt, 0);
 
   const tb = CATS.reduce((acc, c) => acc + (state.budgets[c.id] || 0), 0);
   const tsp = CATS.filter(c => state.budgets[c.id]).reduce(
@@ -45,6 +50,33 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
       />
 
       <div className="wrap" style={{ marginTop: 14 }}>
+        <button type="button" className="brow" onClick={onOpenFunds} style={{ marginBottom: 14 }}>
+          <div className="top">
+            <span className="n">
+              <span aria-hidden="true">🎯</span>
+              ميزانيات خاصة
+            </span>
+            <span className="linkbtn">{funds.length ? 'فتح' : 'أنشئ ميزانية'}</span>
+          </div>
+          <div className="vals">
+            {funds.length ? (
+              <span>
+                {funds.length} ميزانية · المصروف{' '}
+                <b>
+                  <span className="num">{formatMoney(fundsSpent)}</span>
+                </b>{' '}
+                من{' '}
+                <b>
+                  <span className="num">{formatMoney(fundsTotal)}</span>
+                </b>{' '}
+                د.ك
+              </span>
+            ) : (
+              <span>مبلغ خارج دخلك الشهري لشي معيّن، مثل البحر أو رحلة.</span>
+            )}
+          </div>
+        </button>
+
         {tb > 0 ? (
           <section className="card sumcard">
             <div className="line">
