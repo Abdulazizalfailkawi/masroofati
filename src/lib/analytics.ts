@@ -86,12 +86,7 @@ export function statusOf(s: MonthSummary): { c: 'good' | 'warn' | 'bad'; t: stri
   return { c: 'good', t: 'وضعك زين' };
 }
 
-export function buildAlerts(
-  state: AppState,
-  viewedMk: string,
-  loadWarn: string | null,
-  showBackupHint = false
-): AlertItem[] {
+export function buildAlerts(state: AppState, viewedMk: string, loadWarn: string | null): AlertItem[] {
   const out: AlertItem[] = [];
   const t = todayStr();
   const current = curMk();
@@ -195,19 +190,6 @@ export function buildAlerts(
         text: `المتبقي ${formatMoney(s.rem)} د.ك وباقي ${daysPhrase(remainingDays)} على نهاية الشهر`,
       });
     }
-  }
-
-  const hasData = state.expenses.length || state.incomes.length || state.obligations.length;
-  const lb = state.settings.lastBackup;
-  // Backups are an admin-only tool, so only nudge the admin about them.
-  if (showBackupHint && hasData && (!lb || dayDiff(lb, t) > 14)) {
-    out.push({
-      lv: 'info',
-      ic: '💾',
-      title: lb ? 'مرّت أكثر من أسبوعين على آخر نسخة احتياطية' : 'ما أخذت نسخة احتياطية بعد',
-      text: 'بياناتك محفوظة محلياً — صدّر نسخة أو اربط مع Supabase لحفظها سحابياً.',
-      go: 'more',
-    });
   }
 
   const rank = { bad: 0, warn: 1, info: 2 };

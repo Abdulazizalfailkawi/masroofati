@@ -51,7 +51,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   const target = state.settings.saveTarget;
   const bal = balanceNow(viewedMk, state);
-  const alerts = buildAlerts(state, viewedMk, loadWarning, !!currentUser?.isAdmin);
+  const alerts = buildAlerts(state, viewedMk, loadWarning);
   const shownAlerts = showAllAlerts ? alerts : alerts.slice(0, 3);
 
   const pRem = parts(s.rem);
