@@ -63,7 +63,9 @@ Deno.serve(async (req: Request) => {
     cat: parsed.cat,
     src: parsed.src,
     occurred_on: occurredOn,
-    raw: text,
+    // Keep the original text only when we couldn't read it (so it can be reviewed). Once a
+    // message is understood, its names/balances are not stored; only the hash for de-duplication.
+    raw: parsed.kind === 'unparsed' ? text : '',
     msg_hash: await sha256hex(text),
   });
 

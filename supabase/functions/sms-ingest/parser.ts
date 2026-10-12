@@ -145,7 +145,10 @@ export function parseSms(raw: string): ParsedSms {
   const kind = detectKind(t);
   if (kind === 'unparsed') return { ...fail, amount: txn.fils, balance: bal?.fils ?? null };
 
-  const merchant = findMerchant(t, kind);
+  // Person-to-person transfers never keep the other person's name (privacy): just the kind.
+  // Shops keep their name, which is useful when reviewing spending.
+  const isTransfer = /ومض|wamd|تحويل|transfer|حوالة/i.test(t);
+  const merchant = isTransfer ? (/ومض|wamd/i.test(t) ? 'تحويل ومض' : 'تحويل') : findMerchant(t, kind);
   return {
     kind,
     amount: txn.fils,

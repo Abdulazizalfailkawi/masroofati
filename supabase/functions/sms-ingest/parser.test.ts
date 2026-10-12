@@ -9,11 +9,16 @@ const cases: [string, Partial<ReturnType<typeof parseSms>>][] = [
   ],
   [
     'تحويل ومض 1.000 د.ك. من حساب  2001 إلى OTHMAN J A ALENEZI. الرصيد المتوفر 0.618 د.ك.',
-    { kind: 'expense', amount: 1000, balance: 618, merchant: 'OTHMAN J A ALENEZI', pay: 'transfer', cat: 'other' },
+    { kind: 'expense', amount: 1000, balance: 618, merchant: 'تحويل ومض', pay: 'transfer', cat: 'other' },
   ],
   [
     'استلام تحويل ومض 1.000 د.ك. في حساب 2001 من  OTHMAN J A ALENEZI. الرصيد المتوفر 1.618 د.ك.',
-    { kind: 'income', amount: 1000, balance: 1618, merchant: 'OTHMAN J A ALENEZI', src: 'other' },
+    { kind: 'income', amount: 1000, balance: 1618, merchant: 'تحويل ومض', src: 'other' },
+  ],
+  // A bank transfer that isn't Wamd: still no name
+  [
+    'استلام تحويل بنكي 25.000 د.ك. في حساب 2001 من AHMED ALI. الرصيد المتوفر 30.000 د.ك.',
+    { kind: 'income', amount: 25000, merchant: 'تحويل' },
   ],
   [
     'خصم من حساب 2002 مبلغ 1.500 د.ك.  باستخدام UTap بجهاز نقاط البيع في  @ EAT SMART,JABRIYA BRNC - -. الرصيد 48.587 د.ك.',
