@@ -1,9 +1,8 @@
-// Reads a bank SMS (Kuwaiti banks, Arabic or English) and works out what it is:
+﻿// Reads a bank SMS (Kuwaiti banks, Arabic or English) and works out what it is:
 // an expense or an income, the amount in fils (1 KWD = 1000), the other party, etc.
 // It is deliberately bank-agnostic: it keys on common wording rather than one bank's template.
 
-// 'internal' = a transfer between the user's own accounts; it is not income or spending.
-export type SmsKind = 'expense' | 'income' | 'unparsed' | 'internal';
+export type SmsKind = 'expense' | 'income' | 'unparsed';
 
 export interface ParsedSms {
   kind: SmsKind;
@@ -43,11 +42,11 @@ const END = '(?=[\\s.,:،]|$)';
 const HEAD_EXPENSE = /^(?:تم\s+)?(?:خصم|سحب|شراء|مشتريات|تحويل|دفع|سداد|purchase|debit|withdraw)/i;
 const HEAD_INCOME = /^(?:تم\s+)?(?:استلام|إيداع|ايداع|وارد|راتب|رواتب|معاش|بدل|بدلات|مكافأ|استرجاع|استرداد|refund|credit|deposit|salary)/i;
 const ANY_INCOME = new RegExp(
-  START + '(?:استلام|إيداع|ايداع|تم\\s+ايداع|وارد|راتب|رواتب|معاش|بدل|بدلات|مكافأة|استرجاع|استرداد|refund|deposit|salary)' + END,
+  START + '(?:استلام|إيداع|ايداع|تم\\s+ايداع|وارد|راتب|رواتب|معاش|بدل|بدلات|مكافأة|استرجاع|استرداد|refund|deposit|salary|received|credited)' + END,
   'i'
 );
 const ANY_EXPENSE = new RegExp(
-  START + '(?:خصم|سحب|شراء|مشتريات|تحويل|دفع|سداد|purchase|debit|withdraw|pos)' + END,
+  START + '(?:خصم|سحب|شراء|مشتريات|تحويل|دفع|سداد|purchase|debit|withdraw|pos|transfer)' + END,
   'i'
 );
 
@@ -143,30 +142,24 @@ export function parseSms(raw: string): ParsedSms {
   const bal = markIdx >= 0 ? amounts.find(a => a.idx > markIdx) : undefined;
   if (!txn || !txn.fils) return fail;
 
-  const isTransfer = /ومض|wamd|تحويل|transfer|حوالة/i.test(t);
-
-  // Moving money between your own accounts changes nothing about what you earned or spent.
-  // Recognised by wording ("between your accounts") or by account numbers on BOTH sides
-  // ("from account 2001 to account 2002"), as opposed to a person's name on the other side.
-  const accountNumbers = t.match(/حساب\s*\d{3,}|account\s*(?:no\.?\s*)?\d{3,}/gi) || [];
-  const wordedInternal = /بين\s*(?:حساباتك|الحسابات)|تحويل\s*داخلي|between\s*(?:your\s*)?accounts|own\s*accounts?|internal\s*transfer/i.test(t);
-  if (isTransfer && (wordedInternal || accountNumbers.length >= 2)) {
-    return { ...fail, kind: 'internal', amount: txn.fils, balance: bal?.fils ?? null };
-  }
-
   const kind = detectKind(t);
   if (kind === 'unparsed') return { ...fail, amount: txn.fils, balance: bal?.fils ?? null };
 
-  // Person-to-person transfers never keep the other person's name (privacy): just the kind.
-  // Shops keep their name, which is useful when reviewing spending.
-  const merchant = isTransfer ? (/ومض|wamd/i.test(t) ? 'تحويل ومض' : 'تحويل') : findMerchant(t, kind);
+  const isTransfer = /ومض|wamd|تحويل|transfer|حوالة/i.test(t);
+
+  // Only the kind of operation is kept as the label: خصم / تحويل / استلام (or إيداع).
+  // Names of people, shops and accounts are never stored. A shop name is only used on the fly
+  // to guess a spending category.
+  const label = kind === 'income' ? (/استلام|received/i.test(t) ? 'استلام' : 'إيداع') : isTransfer ? 'تحويل' : 'خصم';
+  const cat = kind === 'expense' && !isTransfer ? guessCategory(findMerchant(t, kind), t) : 'other';
+
   return {
     kind,
     amount: txn.fils,
     balance: bal?.fils ?? null,
-    merchant,
+    merchant: label,
     pay: guessPay(t, kind),
-    cat: kind === 'expense' ? guessCategory(merchant, t) : 'other',
+    cat,
     src: kind === 'income' ? guessSource(t) : 'other',
   };
 }
