@@ -1,6 +1,6 @@
 import { AppState, Expense, Income, Obligation, Fund, FundItem, CategoryId, PaymentId, IncomeSourceId } from '../types.ts';
 import { STORAGE_KEY, CATS, PAYS, SOURCES } from './constants.ts';
-import { isDate } from './dates.ts';
+import { isDate, fmtLocal } from './dates.ts';
 import { firstEmoji } from './emoji.ts';
 
 export const uid = (): string =>
@@ -131,13 +131,15 @@ export function normalizeState(raw: any): AppState {
           };
         })
         .filter((i): i is FundItem => i !== null);
+      const ts = Number(x.ts) || Date.now();
       return {
         id: genId(x),
         name,
         icon: firstEmoji(x.icon) || '🎯',
         amt: cleanAmt(x.amt),
+        date: isDate(x.date) ? x.date : fmtLocal(new Date(ts)),
         items,
-        ts: Number(x.ts) || Date.now(),
+        ts,
       };
     })
     .filter((f): f is Fund => f !== null);

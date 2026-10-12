@@ -47,6 +47,7 @@ export const FundsView: React.FC<FundsViewProps> = ({
       <div>
         <HeaderBand
           title={`${fund.icon} ${fund.name}`}
+          sub={`بدأت ${fmtDate(fund.date)}`}
           back="funds"
           onBack={() => onSelectFund(null)}
           viewedMk={curMk()}
@@ -105,7 +106,7 @@ export const FundsView: React.FC<FundsViewProps> = ({
 
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8, marginTop: 14 }}>
             <button type="button" className="btn primary" onClick={() => onAddItem(fund.id)}>
-              ➕ إضافة مشترى
+              ➕ إضافة بند
             </button>
             <button type="button" className="btn" onClick={() => onEditFund(fund)}>
               ✏️ تعديل
@@ -116,10 +117,10 @@ export const FundsView: React.FC<FundsViewProps> = ({
             <div className="card" style={{ marginTop: 14 }}>
               <div className="empty">
                 <div className="e1" aria-hidden="true">
-                  🛒
+                  🧾
                 </div>
-                <b>ما اشتريت شي للحين</b>
-                <span>اضغط «إضافة مشترى» وسجّل أول شي من هالميزانية.</span>
+                <b>ما وزّعت شي للحين</b>
+                <span>اضغط «إضافة بند» وخصص جزء من الميزانية، مثلاً 20 للأكل و20 للعصير.</span>
               </div>
             </div>
           ) : (
@@ -132,10 +133,10 @@ export const FundsView: React.FC<FundsViewProps> = ({
                   onClick={() => onEditItem(fund.id, it)}
                 >
                   <span className="ico" aria-hidden="true">
-                    🛒
+                    🧾
                   </span>
                   <span className="rmain">
-                    <b>{it.name || 'مشترى'}</b>
+                    <b>{it.name || 'بند'}</b>
                     <small>{fmtDate(it.date)}</small>
                   </span>
                   <span className="ramt">
@@ -173,7 +174,7 @@ export const FundsView: React.FC<FundsViewProps> = ({
               </div>
               <b>ما عندك ميزانيات خاصة</b>
               <span>
-                مثلاً خصص 200 د.ك للبحر، وسجّل فيها السنارة والخيط وغيرها، وشوف كم باقي لك.
+                مثلاً خصص 100 د.ك لشي معيّن، ووزّعها على بنود: 20 أكل، 20 عصير...، وشوف كم باقي لك.
               </span>
             </div>
           </div>

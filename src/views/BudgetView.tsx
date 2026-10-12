@@ -13,6 +13,7 @@ interface BudgetViewProps {
   onCurMonth: () => void;
   onSetBudget: (catId: CategoryId) => void;
   onOpenFunds: () => void;
+  onAddFund: () => void;
 }
 
 export const BudgetView: React.FC<BudgetViewProps> = ({
@@ -23,6 +24,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
   onCurMonth,
   onSetBudget,
   onOpenFunds,
+  onAddFund,
 }) => {
   const s = summary(viewedMk, state);
   const funds = state.funds || [];
@@ -50,13 +52,17 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
       />
 
       <div className="wrap" style={{ marginTop: 14 }}>
-        <button type="button" className="brow" onClick={onOpenFunds} style={{ marginBottom: 14 }}>
+        <button type="button" className="btn primary block-btn" onClick={onAddFund}>
+          ➕ إضافة ميزانية
+        </button>
+
+        <button type="button" className="brow" onClick={onOpenFunds} style={{ margin: '14px 0' }}>
           <div className="top">
             <span className="n">
               <span aria-hidden="true">🎯</span>
-              ميزانيات خاصة
+              ميزانياتي الخاصة
             </span>
-            <span className="linkbtn">{funds.length ? 'فتح' : 'أنشئ ميزانية'}</span>
+            {funds.length > 0 && <span className="linkbtn">فتح</span>}
           </div>
           <div className="vals">
             {funds.length ? (
@@ -72,7 +78,7 @@ export const BudgetView: React.FC<BudgetViewProps> = ({
                 د.ك
               </span>
             ) : (
-              <span>مبلغ خارج دخلك الشهري لشي معيّن، مثل البحر أو رحلة.</span>
+              <span>ما عندك ميزانيات. حدد مبلغ لشي معيّن ووزّعه على بنود (أكل، عصير...).</span>
             )}
           </div>
         </button>

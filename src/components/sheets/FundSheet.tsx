@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Fund } from '../../types.ts';
 import { FUND_ICONS } from '../../lib/constants.ts';
 import { amtField, parseAmount } from '../../lib/money.ts';
+import { isDate, todayStr } from '../../lib/dates.ts';
 import { EmojiPicker } from '../EmojiPicker.tsx';
 
 interface FundSheetProps {
   fund: Fund | null;
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: { id?: string; name: string; amt: number; icon: string }) => void;
+  onSave: (data: { id?: string; name: string; amt: number; icon: string; date: string }) => void;
   onDelete?: (id: string) => void;
 }
 
@@ -16,6 +17,7 @@ export const FundSheet: React.FC<FundSheetProps> = ({ fund, isOpen, onClose, onS
   const [name, setName] = useState('');
   const [amt, setAmt] = useState('');
   const [icon, setIcon] = useState('🎯');
+  const [date, setDate] = useState(todayStr());
   const [err, setErr] = useState<string | null>(null);
 
   useEffect(() => {
@@ -23,10 +25,12 @@ export const FundSheet: React.FC<FundSheetProps> = ({ fund, isOpen, onClose, onS
       setName(fund.name);
       setAmt(amtField(fund.amt));
       setIcon(fund.icon);
+      setDate(fund.date);
     } else {
       setName('');
       setAmt('');
       setIcon('🎯');
+      setDate(todayStr());
     }
     setErr(null);
   }, [fund, isOpen]);
@@ -45,7 +49,11 @@ export const FundSheet: React.FC<FundSheetProps> = ({ fund, isOpen, onClose, onS
       setErr('اكتب مبلغ صحيح أكبر من صفر');
       return;
     }
-    onSave({ id: fund ? fund.id : undefined, name: cleanName, amt: parsed, icon });
+    if (!isDate(date)) {
+      setErr('اختر التاريخ بشكل صحيح');
+      return;
+    }
+    onSave({ id: fund ? fund.id : undefined, name: cleanName, amt: parsed, icon, date });
     onClose();
   };
 
@@ -89,7 +97,12 @@ export const FundSheet: React.FC<FundSheetProps> = ({ fund, isOpen, onClose, onS
               value={amt}
               onChange={e => setAmt(e.target.value)}
             />
-            <span className="hint">هذا المبلغ خارج دخلك الشهري، ولا ينخصم من المتبقي.</span>
+            <span className="hint">بعد الحفظ تفتح صفحة الميزانية وتوزّع منها بنود (أكل، عصير...). المبلغ خارج دخلك الشهري.</span>
+          </label>
+
+          <label className="fld">
+            <span>التاريخ</span>
+            <input type="date" value={date} onChange={e => setDate(e.target.value)} />
           </label>
 
           <EmojiPicker name="fund-icon" value={icon} presets={FUND_ICONS} onChange={setIcon} />

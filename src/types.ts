@@ -68,6 +68,7 @@ export interface Fund {
   name: string;
   icon: string;
   amt: number; // Total budget, in fils
+  date: string; // YYYY-MM-DD, when the budget starts
   items: FundItem[];
   ts: number;
 }

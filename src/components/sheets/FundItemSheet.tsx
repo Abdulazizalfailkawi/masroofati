@@ -67,11 +67,11 @@ export const FundItemSheet: React.FC<FundItemSheetProps> = ({
         className="sheet"
         role="dialog"
         aria-modal="true"
-        aria-label={item ? 'تعديل المشترى' : 'إضافة مشترى'}
+        aria-label={item ? 'تعديل البند' : 'إضافة بند'}
       >
         <div className="grab" />
         <div className="sheet-h">
-          <h2>{item ? 'تعديل المشترى' : `إضافة مشترى — ${fundName}`}</h2>
+          <h2>{item ? 'تعديل البند' : `إضافة بند — ${fundName}`}</h2>
           <button type="button" className="x" onClick={onClose} aria-label="إغلاق">
             ×
           </button>
@@ -79,11 +79,11 @@ export const FundItemSheet: React.FC<FundItemSheetProps> = ({
 
         <form className="sheet-b" onSubmit={handleSubmit} noValidate>
           <label className="fld">
-            <span>شنو اشتريت؟</span>
+            <span>اسم البند</span>
             <input
               type="text"
               maxLength={60}
-              placeholder="مثلاً: سنارة أو خيط"
+              placeholder="مثلاً: أكل أو عصير"
               value={name}
               onChange={e => setName(e.target.value)}
               autoFocus={!item}
@@ -91,7 +91,7 @@ export const FundItemSheet: React.FC<FundItemSheetProps> = ({
           </label>
 
           <label className="fld amt">
-            <span>المبلغ (د.ك)</span>
+            <span>المبلغ المخصص (د.ك)</span>
             <input
               type="text"
               inputMode="decimal"
@@ -100,6 +100,7 @@ export const FundItemSheet: React.FC<FundItemSheetProps> = ({
               value={amt}
               onChange={e => setAmt(e.target.value)}
             />
+            <span className="hint">ينخصم من مبلغ الميزانية.</span>
           </label>
 
           <label className="fld">

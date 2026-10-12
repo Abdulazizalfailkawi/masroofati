@@ -427,11 +427,19 @@ export default function App() {
   };
 
   // Special Budget (Fund) Handlers
-  const handleSaveFund = (data: { id?: string; name: string; amt: number; icon: string }) => {
+  const handleSaveFund = (data: {
+    id?: string;
+    name: string;
+    amt: number;
+    icon: string;
+    date: string;
+  }) => {
     let funds = [...appState.funds];
     if (data.id) {
       funds = funds.map(f =>
-        f.id === data.id ? { ...f, name: data.name, amt: data.amt, icon: data.icon } : f
+        f.id === data.id
+          ? { ...f, name: data.name, amt: data.amt, icon: data.icon, date: data.date }
+          : f
       );
     } else {
       const created: Fund = {
@@ -439,11 +447,14 @@ export default function App() {
         name: data.name,
         amt: data.amt,
         icon: data.icon,
+        date: data.date,
         items: [],
         ts: Date.now(),
       };
       funds.push(created);
+      // Open the new budget's own page so items can be allocated right away
       setSelectedFundId(created.id);
+      navigateTo('funds');
     }
     updateStateAndPersist({ ...appState, funds });
     showToast(data.id ? 'تم تعديل الميزانية' : 'تم إنشاء الميزانية');
@@ -479,12 +490,12 @@ export default function App() {
       return { ...f, items };
     });
     updateStateAndPersist({ ...appState, funds });
-    showToast(data.id ? 'تم تعديل المشترى' : 'تم حفظ المشترى');
+    showToast(data.id ? 'تم تعديل البند' : 'تم حفظ البند');
   };
 
   const handleDeleteFundItem = (itemId: string) => {
     setDialogConfig({
-      title: 'حذف المشترى؟',
+      title: 'حذف البند؟',
       message: 'لا يمكن التراجع عن الحذف بعد تأكيده.',
       okText: 'احذف',
       isDanger: true,
@@ -495,7 +506,7 @@ export default function App() {
         updateStateAndPersist({ ...appState, funds });
         setFundItemSheetOpen(false);
         setDialogOpen(false);
-        showToast('تم حذف المشترى');
+        showToast('تم حذف البند');
       },
     });
     setDialogOpen(true);
@@ -699,6 +710,10 @@ export default function App() {
           onOpenFunds={() => {
             setSelectedFundId(null);
             navigateTo('funds');
+          }}
+          onAddFund={() => {
+            setEditingFund(null);
+            setFundSheetOpen(true);
           }}
         />
       )}
