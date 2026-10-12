@@ -49,6 +49,8 @@ Deno.serve(async (req: Request) => {
   if (!owner) return reply({ ok: false, error: 'invalid token' }, 401);
 
   const parsed = parseSms(text);
+  // Transfers between the user's own accounts are neither income nor spending: drop them.
+  if (parsed.kind === 'internal') return reply({ ok: true, ignored: 'internal transfer' });
   const occurredOn = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kuwait' });
 
   const { error: insertErr } = await admin.from('masroofati_inbox').insert({
