@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AppState, RouteName, ThemeMode, AuthUser } from '../types.ts';
+import { AppState, RouteName, AuthUser } from '../types.ts';
 import { amtField, parseAmount } from '../lib/money.ts';
 import { fmtDate, curMk } from '../lib/dates.ts';
 import { HeaderBand } from '../components/HeaderBand.tsx';
@@ -48,17 +48,6 @@ export const MoreView: React.FC<MoreViewProps> = ({
     };
     onUpdateState(updated);
     onToast(amount > 0 ? 'تم حفظ هدف التوفير' : 'تم إلغاء هدف التوفير');
-  };
-
-  const handleThemeChange = (theme: ThemeMode) => {
-    const updated: AppState = {
-      ...state,
-      settings: {
-        ...state.settings,
-        theme,
-      },
-    };
-    onUpdateState(updated);
   };
 
   return (
@@ -132,7 +121,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
               <button
                 type="button"
                 className="btn primary block-btn"
-                style={{ background: 'var(--good)', color: '#fff' }}
+                style={{ background: 'var(--good)', color: 'var(--bg)' }}
                 onClick={() => onNavigate('admin')}
               >
                 🛡️ فتح لوحة تحكم المدير
@@ -181,31 +170,6 @@ export const MoreView: React.FC<MoreViewProps> = ({
                 حفظ
               </button>
             </form>
-          </div>
-        </div>
-
-        {/* Theme */}
-        <div className="group">
-          <div className="block">
-            <h3>المظهر</h3>
-            <div className="seg3 chips" role="radiogroup">
-              {[
-                ['auto', 'تلقائي'],
-                ['light', 'فاتح'],
-                ['dark', 'داكن'],
-              ].map(([k, n]) => (
-                <label key={k} className="opt">
-                  <input
-                    type="radio"
-                    name="theme"
-                    value={k}
-                    checked={state.settings.theme === k}
-                    onChange={() => handleThemeChange(k as ThemeMode)}
-                  />
-                  <span>{n}</span>
-                </label>
-              ))}
-            </div>
           </div>
         </div>
 

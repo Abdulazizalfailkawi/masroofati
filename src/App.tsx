@@ -137,27 +137,6 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
-  // Theme application
-  useEffect(() => {
-    const theme = appState.settings.theme;
-    const root = document.documentElement;
-    if (theme === 'auto') {
-      root.removeAttribute('data-theme');
-    } else {
-      root.setAttribute('data-theme', theme);
-    }
-
-    const dark =
-      theme === 'dark' ||
-      (theme === 'auto' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-    document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.remove());
-    const m = document.createElement('meta');
-    m.name = 'theme-color';
-    m.content = dark ? '#14306F' : '#1E4FD8';
-    document.head.appendChild(m);
-  }, [appState.settings.theme]);
-
   // Persist to local storage and sync with Supabase in background
   const updateStateAndPersist = (newState: AppState) => {
     setAppState(newState);
